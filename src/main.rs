@@ -2,55 +2,7 @@ use std::collections::HashMap;
 use std::io;
 
 fn main() {
-    in_memory_kv_repl()
-    // _test2();
-}
-
-fn _test() {
-    println!("Hello, world!");
-
-    let input = "echo hello world".to_string();
-    let parts: Vec<&str> = input.split_whitespace().collect();
-    println!("{:?}", parts);
-    match parts.as_slice() {
-        ["ping"] => println!("pong"),
-        ["echo", rest @ ..] => println!("{}", rest.join(" ")),
-        _ => println!("unknown command"),
-    }
-
-    let mut cache: HashMap<String, String> = HashMap::new();
-
-    println!("Type something");
-
-    let mut count = 0;
-    loop {
-        count += 1;
-        let mut line = String::new();
-        match io::stdin().read_line(&mut line) {
-            Ok(0) => {
-                println!("EOF, good bye");
-                break;
-            }
-            Ok(_) => {
-                let op = match line.trim() {
-                    s if matches!(s.to_lowercase().as_str(), "quit" | "q" | "exit" | "bye") => {
-                        println!("{:?}", cache);
-                        println!("Exiting. good bye");
-                        break;
-                    }
-                    s => {
-                        cache.insert(count.to_string(), s.to_string());
-                        s
-                    }
-                };
-                println!("You entered: {}", op);
-            }
-            Err(_) => {
-                println!("Some Error occurred");
-                break;
-            }
-        };
-    }
+    repl()
 }
 
 struct DB {
@@ -75,20 +27,6 @@ impl DB {
     }
 }
 
-fn _test2() {
-    let mut db = DB::init();
-    db.put("foo", "bar is a big baz");
-
-    println!("get(foo) = {:?}", db.get("foo"));
-    println!("get(baz) = {:?}", db.get("baz"));
-    db.put(&*"baz".to_string(), &*"qux".to_string());
-    println!("get(baz) = {:?}", db.get("baz"));
-    db.delete("foo");
-    println!("get(foo) = {:?}", db.get("foo"));
-    db.delete("foo");
-    println!("tried to delete foo again")
-}
-
 fn compile(db: &mut DB, query: &str) {
     let commands: Vec<&str> = query.split_whitespace().collect();
 
@@ -107,7 +45,7 @@ fn compile(db: &mut DB, query: &str) {
     }
 }
 
-fn in_memory_kv_repl() {
+fn repl() {
     // Read-Evaluate-Print-Loop for in memory KV store
 
     let mut db = DB::init();
