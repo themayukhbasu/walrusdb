@@ -77,3 +77,39 @@ fn repl() {
         compile(&mut db, input)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn put_and_get_works() {
+        let mut db = DB::init();
+        db.put("foo", "bar is a big baz");
+        assert_eq!(db.get("foo").unwrap(), "bar is a big baz");
+    }
+
+    #[test]
+    fn missing_key_returns_none() {
+        let mut db = DB::init();
+        assert_eq!(db.get("foo"), None);
+    }
+
+    #[test]
+    fn delete_works() {
+        let mut db = DB::init();
+        db.put("foo", "bar is a big baz");
+        assert_eq!(db.get("foo").unwrap(), "bar is a big baz");
+        db.delete("foo");
+        assert_eq!(db.get("foo"), None);
+    }
+
+    #[test]
+    fn update_works() {
+        let mut db = DB::init();
+        db.put("foo", "bar");
+        assert_eq!(db.get("foo").unwrap(), "bar");
+        db.put("foo", "baz");
+        assert_eq!(db.get("foo").unwrap(), "baz");
+    }
+}
