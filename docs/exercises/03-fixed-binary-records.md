@@ -74,8 +74,19 @@ If each record is 8 bytes, record `i` starts at byte `i * 8`. This is the same m
 Nothing in this exercise. But in real formats, padding keeps records aligned to powers of two, which matters for memory-mapped I/O. That's a Phase 2+ concern — for now just zero it out.
 </details>
 
+## Tests to write
+
+Add a `#[cfg(test)]` block and write these tests. Run with `cargo test --example ex03_fixed_records`.
+
+1. **`encode_decode_roundtrip`** — call `encode(1000, 5, true)`, pass the result to `decode`, assert the output matches `(1000, 5, true)`. No file I/O needed — just test the functions as pure transformations.
+2. **`decode_encode_roundtrip`** — same idea in reverse: construct a known `[u8; 8]` by hand and assert `decode` gives the right values.
+3. **`seek_to_record_2`** — write four records to a file, seek to index 2, decode, assert the correct values. Use a unique file path.
+4. **`seek_to_record_0`** — same, but record index 0, to confirm the first record is not accidentally skipped.
+
+Tests 1 and 2 don't need files and can run in parallel safely.
+
 ## You're done when
 
+- All tests pass with `cargo test --example ex03_fixed_records`.
 - You can seek to any record by index and decode the correct values.
-- The `encode`/`decode` functions are inverses: `decode(encode(x, y, z)) == (x, y, z)`.
 - You can see how, if the record size were `PAGE_SIZE` instead of 8, these functions would be your Pager's `read_page` and `write_page`.

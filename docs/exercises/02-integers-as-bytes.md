@@ -68,8 +68,18 @@ let val = u32::from_le_bytes(buf[2..6].try_into().unwrap());
 `from_le_bytes` takes `[u8; 4]` (an array), but `buf[2..6]` is a `&[u8]` (a slice). `.try_into()` converts the slice to a fixed-size array — it returns a `Result` because the conversion can fail if the length doesn't match, hence the `.unwrap()`.
 </details>
 
+## Tests to write
+
+Add a `#[cfg(test)]` block and write these tests. Run with `cargo test --example ex02_integers_as_bytes`.
+
+1. **`encode_decode_roundtrip`** — encode the three values into a buffer, write to a file, read back into a fresh buffer, decode, assert all three values match exactly.
+2. **`u16_is_little_endian`** — encode `42u16`, check that the byte at index 0 is `0x2A` and the byte at index 1 is `0x00`. This verifies the byte order, not just the round-trip.
+3. **`u32_correct_byte_layout`** — encode `100_000u32` at bytes 2–5, check the individual bytes match what you'd expect in little-endian (`0xA0, 0x86, 0x01, 0x00`).
+
+For tests 2 and 3 you don't need a file — just encode into a buffer and inspect the bytes directly.
+
 ## You're done when
 
-- The decoded values are exactly `42`, `100_000`, and `7`.
-- Open `target/ints.bin` in a hex editor (or `xxd target/ints.bin`) and read the raw bytes — can you verify by hand that `42` in little-endian is `2a 00`?
+- All tests pass with `cargo test --example ex02_integers_as_bytes`.
+- You can run `xxd target/ints.bin` and read the raw bytes, verifying by hand that `42` in little-endian is `2a 00`.
 - You can answer: what would those same bytes look like in big-endian?

@@ -61,8 +61,20 @@ file.seek(SeekFrom::Start(offset_in_bytes))?;
 `file.read(&mut buf)` is allowed to return fewer bytes than you asked for. `file.read_exact(&mut buf)` either fills the buffer completely or returns an error. For fixed-size pages you always want `read_exact`.
 </details>
 
+## Tests to write
+
+Add a `#[cfg(test)]` block and write these three tests. Run them with `cargo test --example ex01_seek`.
+
+Give each test its own unique file path (e.g. `target/test_ex01_slot0.bin`) — tests run in parallel and will corrupt each other if they share a file. You learned this the hard way.
+
+1. **`read_slot_0_returns_all_a`** — write three slots, read at offset 0, assert all 32 bytes are `b'A'`.
+2. **`read_slot_1_returns_all_b`** — same setup, read at offset `32`, assert all 32 bytes are `b'B'`.
+3. **`read_slot_2_returns_all_c`** — same setup, read at offset `64`, assert all 32 bytes are `b'C'`.
+
+Each test should create its file, run the assertion, and delete the file on cleanup.
+
 ## You're done when
 
-- The program prints 32 `B` bytes (not `A`, not `C`).
+- All three tests pass with `cargo test --example ex01_seek`.
 - You can change the index from 1 to 0 or 2 and get the right slot back.
 - You understand: given a slot size `S` and slot number `n`, the byte offset is `n * S`. That is the Pager.

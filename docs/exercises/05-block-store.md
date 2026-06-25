@@ -107,9 +107,20 @@ enum DbError {
 `[u8; BLOCK_SIZE]` works as a return type and parameter when `BLOCK_SIZE` is a `const usize`. If the compiler complains about the const in a generic position, try `[u8; 64]` directly — const generics are stable but sometimes need explicit types.
 </details>
 
+## Tests to write
+
+Add a `#[cfg(test)]` block and write these tests. Run with `cargo test --example ex05_block_store`. Use unique file paths per test.
+
+1. **`new_store_has_zero_blocks`** — open a fresh file, assert `num_blocks()` returns `0`.
+2. **`allocate_increases_block_count`** — open a fresh store, allocate one block, assert `num_blocks()` returns `1`.
+3. **`write_and_read_block_roundtrip`** — allocate a block, write known bytes to it, read it back, assert the bytes match.
+4. **`read_invalid_block_returns_err`** — open a fresh store (0 blocks), call `read_block(0)`, assert the result is `Err`. The test must not panic.
+5. **`data_persists_across_reopen`** — allocate a block, write data, drop the store, reopen it, read the block, assert the data is still there.
+
+Test 5 is the key one — it proves you're actually writing to disk and not just to memory.
+
 ## You're done when
 
-- Data written before a process restart is readable after reopening.
+- All five tests pass with `cargo test --example ex05_block_store`.
 - `num_blocks()` returns the correct count on both fresh and existing files.
-- `read_block` on a nonexistent block number returns an `Err`, not a panic.
 - You can see that replacing `64` with `4096` and this file becomes `src/pager.rs`.

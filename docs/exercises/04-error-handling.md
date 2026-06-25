@@ -113,9 +113,19 @@ impl std::fmt::Display for DbError {
 `std::error::Error` can then be implemented as an empty `impl` — it has default methods that rely on `Display`.
 </details>
 
+## Tests to write
+
+Add a `#[cfg(test)]` block and write these tests. Run with `cargo test --example ex04_error_handling`.
+
+1. **`write_and_read_succeeds`** — call `write_number` then `read_number` on the same file, assert the value comes back correctly. Assert the result is `Ok`, not `Err`.
+2. **`read_nonexistent_file_returns_err`** — call `read_number` on a path that does not exist, assert the result is `Err`. The test should not panic.
+3. **`error_display_is_not_empty`** — construct a `DbError::Io(...)` and call `to_string()` on it (which uses your `Display` impl), assert the string is not empty.
+
+Test 2 is the important one — it proves the refactor actually works. If `.unwrap()` were still in place, the test would panic instead of returning `Err`.
+
 ## You're done when
 
+- All tests pass with `cargo test --example ex04_error_handling`.
 - No `.unwrap()` or `panic!` anywhere in your code.
-- The missing-file case prints something like `I/O error: No such file or directory (os error 2)` and exits cleanly — no panic backtrace.
 - You can explain: what does `?` actually do? What two things does it replace?
 - You can answer: when would you still use `.unwrap()` in production Rust code? (Hint: it's for cases that are truly impossible, not just unlikely.)

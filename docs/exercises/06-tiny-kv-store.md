@@ -121,9 +121,22 @@ This is exactly how deletion works in an LSM-tree (and in your Phase 1 store). T
 These are not bugs — they're deliberately left for Phase 1. The goal here is to feel the scan-and-tombstone pattern, not to build a production store.
 </details>
 
+## Tests to write
+
+Add a `#[cfg(test)]` block and write these tests. Run with `cargo test --example ex06_tiny_kv`. Use unique file paths per test.
+
+1. **`put_and_get_returns_value`** — put a key, get it back, assert the value matches.
+2. **`get_missing_key_returns_none`** — get a key that was never put, assert the result is `Ok(None)`.
+3. **`delete_removes_key`** — put a key, delete it, get it, assert the result is `Ok(None)`.
+4. **`overwrite_existing_key`** — put a key with value `"a"`, put the same key with value `"b"`, get it, assert `"b"` comes back.
+5. **`delete_nonexistent_key_is_noop`** — delete a key that doesn't exist, assert no error is returned.
+6. **`data_persists_across_reopen`** — put two keys, drop the store, reopen it, get both keys, assert the values are still correct.
+
+Test 6 is the capstone — it's the same thing the Phase 1 exit demo proves.
+
 ## You're done when
 
-- Put, get, and delete work correctly.
-- Data survives a process restart.
+- All six tests pass with `cargo test --example ex06_tiny_kv`.
+- Data survives a process restart (test 6 proves it).
 - You can answer: why is linear scan O(n), and why does it get worse over time with deletions? What would fix it? (That's the B-tree. Phase 2.)
 - You can see exactly where Phase 1 extends this: a page header that holds multiple records per page, and a free list that recycles tombstoned space.
