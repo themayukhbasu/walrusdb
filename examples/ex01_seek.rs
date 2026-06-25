@@ -23,6 +23,8 @@ fn main() {
     copying them requires an explicit .clone().
 
      */
+
+    let _ = std::fs::remove_file(path); // clean up after
 }
 
 fn _seek_file(path: &Path, offset: u64) -> [u8; 32] {
@@ -113,7 +115,6 @@ mod tests {
     #[test]
     fn read_slot_2_returns_all_b_c() {
         let path = Path::new("target/test_slots_2.bin");
-
         let _ = std::fs::remove_file(path); // clean slate
         _create_write(path);
         let buf = _seek_file(path, 64);

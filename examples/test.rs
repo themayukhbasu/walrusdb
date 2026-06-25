@@ -13,9 +13,9 @@ fn main() {
     println!("{}", n);
 
     println!("============= u32 to [u8; 4] ==============");
-    let n: u32 = 42;
+    let n: u32 = 100_000;
     let buf: [u8; 4] = n.to_le_bytes();
-    println!("{:?}", buf);
+    println!("{:?} with size {}", buf, std::mem::size_of_val(&buf));
 
     println!("============= size of var ==============");
 
