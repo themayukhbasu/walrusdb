@@ -1,5 +1,5 @@
-Date: 03rd July 2026
-Status: Implemented:
+Date: 2026-07-03
+Status: Implemented
 
 ## Context
 
@@ -10,9 +10,12 @@ I learned that &self provides an immutable reference to the instance, allowing m
 ## Decision:
 
 We changed the method signature from:
-fn get(&mut self, key: &str) -> Option<&String>
+
+    fn get(&mut self, key: &str) -> Option<&String>
+
 to:
-fn get(&self, key: &str) -> Option<&String>
+
+    fn get(&self, key: &str) -> Option<&String>
 
 ## Rationale: 
 The get method performs a read-only operation and does not modify the state of the database. Therefore, requiring &mut self is unnecessary.
