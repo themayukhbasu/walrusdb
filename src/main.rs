@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn missing_key_returns_none() {
-        let mut db = DB::init();
+        let db = DB::init();
         assert_eq!(db.get("foo"), None);
     }
 
