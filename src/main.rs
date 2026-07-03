@@ -18,7 +18,7 @@ impl DB {
         self.cache.insert(key.to_string(), value.to_string());
     }
 
-    fn get(&mut self, key: &str) -> Option<&String> {
+    fn get(&self, key: &str) -> Option<&String> {
         self.cache.get(key)
     }
 
@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn missing_key_returns_none() {
-        let mut db = DB::init();
+        let db = DB::init();
         assert_eq!(db.get("foo"), None);
     }
 
