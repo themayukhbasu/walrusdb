@@ -18,7 +18,7 @@ impl DB {
         self.cache.insert(key.to_string(), value.to_string());
     }
 
-    fn get(&mut self, key: &str) -> Option<&String> {
+    fn get(&self, key: &str) -> Option<&String> {
         self.cache.get(key)
     }
 
