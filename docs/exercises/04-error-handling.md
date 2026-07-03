@@ -51,20 +51,23 @@ fn main() {
 
 **Refactor it** so that:
 
-1. You define an error type:
+1. You define an error type with **two** variants — one wrapping an external error, one a pure domain error you construct yourself with no `io::Error` inside it:
    ```rust
    enum DbError {
        Io(std::io::Error),
+       MeaningOfLife, // read_number saw 42 and refuses to accept it
    }
    ```
 
 2. `write_number` and `read_number` return `Result<_, DbError>` and use `?` instead of `.unwrap()`.
 
-3. `main` returns `Result<(), DbError>` and uses `?` throughout.
+3. `read_number` checks the value it just read: if it's `42`, return `Err(DbError::MeaningOfLife)` instead of `Ok(42)`. Notice this check can only happen *after* the I/O already succeeded — it's not something `io::Error` could ever represent.
 
-4. `DbError` implements `Display` (print something useful) and `std::error::Error`.
+4. `main` returns `Result<(), DbError>` and uses `?` throughout.
 
-5. The missing-file case prints a helpful error message instead of panicking.
+5. `DbError` implements `Display` (print something useful for *each* variant) and `std::error::Error`.
+
+6. The missing-file case prints a helpful error message instead of panicking. So does the "read 42" case.
 
 ## Hints
 
@@ -105,6 +108,7 @@ impl std::fmt::Display for DbError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DbError::Io(e) => write!(f, "I/O error: {}", e),
+            // add the MeaningOfLife arm yourself
         }
     }
 }
@@ -120,8 +124,9 @@ Add a `#[cfg(test)]` block and write these tests. Run with `cargo test --example
 1. **`write_and_read_succeeds`** — call `write_number` then `read_number` on the same file, assert the value comes back correctly. Assert the result is `Ok`, not `Err`.
 2. **`read_nonexistent_file_returns_err`** — call `read_number` on a path that does not exist, assert the result is `Err`. The test should not panic.
 3. **`error_display_is_not_empty`** — construct a `DbError::Io(...)` and call `to_string()` on it (which uses your `Display` impl), assert the string is not empty.
+4. **`read_42_returns_meaning_of_life_error`** — write `42` to a file, then `read_number` it back, assert the result is `Err(DbError::MeaningOfLife)` specifically (not just `Err`). This is the one that proves your enum has a real second variant, not just a wrapper.
 
-Test 2 is the important one — it proves the refactor actually works. If `.unwrap()` were still in place, the test would panic instead of returning `Err`.
+Test 2 is the important one for the `Io` path — it proves the refactor actually works. If `.unwrap()` were still in place, the test would panic instead of returning `Err`. Test 4 is the important one for the domain-error path.
 
 ## You're done when
 
@@ -129,3 +134,4 @@ Test 2 is the important one — it proves the refactor actually works. If `.unwr
 - No `.unwrap()` or `panic!` anywhere in your code.
 - You can explain: what does `?` actually do? What two things does it replace?
 - You can answer: when would you still use `.unwrap()` in production Rust code? (Hint: it's for cases that are truly impossible, not just unlikely.)
+- You can explain: why couldn't `DbError::MeaningOfLife` ever come from a `From<std::io::Error>` conversion? What does that tell you about the difference between an *external* error and a *domain* error?
