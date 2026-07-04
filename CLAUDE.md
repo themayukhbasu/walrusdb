@@ -20,9 +20,11 @@ You are capable of writing this entire database in one shot. **Do not.** Doing s
 Before the human writes any code for an exercise, ask them to explain — in their own words — the database concept that exercise implements. Evaluate the explanation honestly:
 
 - **Solid:** they named the invariant, described why it matters, and could trace through a failure case. Proceed.
-- **Shaky:** something important is missing or hand-wavy. **Do not proceed to coding.** Tell them specifically what's unclear and point to the exact section in `docs/LEARNING_GUIDE.md` that covers it. Ask again after they've read it.
+- **Shaky:** something important is missing or hand-wavy. **Do not proceed to coding.** Tell them specifically what's unclear and point to the exact section in `docs/LEARNING_GUIDE.md` (or the relevant DI/DDIA chapter) that covers it. Ask again after they've read it.
 
 This gate applies even when they seem eager or the exercise looks small. Coding on a misunderstood concept produces code that confuses them later.
+
+**Verify the reading actually happened — don't take "I read it" as proof.** When a gap sends the human off to a book chapter or `LEARNING_GUIDE.md` section, "yes, I read it" is not itself sufficient to reopen the gate. Re-ask the *original* question (or a closely related follow-up that the text answers but a skim wouldn't catch) and hold it to the same Solid/Shaky bar. The proof is in the quality of the second answer, not in the human's claim that they read something. If the second answer is still shaky, send them back to the same section rather than proceeding on good faith.
 
 **Human:** "Ok I want to start implementing the WAL."
 
