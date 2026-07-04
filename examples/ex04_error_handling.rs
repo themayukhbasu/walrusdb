@@ -6,7 +6,7 @@ fn main() -> Result<(), DBError> {
     write_number("target/num.bin", 420)?;
     let n = read_number("target/num.bin")?;
 
-    println!("read back: {:?}", n);
+    println!("read back: {}", n);
 
     read_number("target/does_not_exist.bin")?;
     Ok(())
