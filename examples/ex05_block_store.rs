@@ -1,7 +1,7 @@
 use std::fmt;
-use std::fmt::{Formatter, write};
+use std::fmt::{Formatter};
 use std::fs::OpenOptions;
-use std::io::{Error, Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 const BLOCK_SIZE: usize = 64;
 
@@ -34,7 +34,7 @@ struct BlockStore {
 
 impl BlockStore {
     fn open(path: &str) -> Result<Self, DBError> {
-        let mut file = OpenOptions::new()
+        let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
@@ -44,6 +44,7 @@ impl BlockStore {
 
     fn is_valid_block_num(&mut self, n: u64) -> Result<(), DBError> {
         if n == 42 {
+            // this is a joke; don't use it in your own pager
             return Err(DBError::InvalidPage(n));
         }
         if n >= self.num_blocks()? {
@@ -88,7 +89,25 @@ impl BlockStore {
     }
 }
 
-fn main() {}
+fn main() -> Result<(), DBError> {
+    let path_str = "target/blockstore.bin";
+    let mut store = BlockStore::open(path_str)?;
+    let n1 = store.allocate_block()?;
+    let n2 = store.allocate_block()?;
+    let n3 = store.allocate_block()?;
+
+    store.write_block(n3, [3u8; BLOCK_SIZE])?;
+    store.write_block(n1, [1u8;BLOCK_SIZE])?;
+    store.write_block(n2, [2u8; BLOCK_SIZE])?;
+
+    drop(store);
+
+    let mut store = BlockStore::open(path_str)?;
+    let read_buf = store.read_block(n1)?;
+    assert_eq!(read_buf, [1u8;BLOCK_SIZE]);
+    println!("{:?}", read_buf);
+    Ok(())
+}
 
 
 #[cfg(test)]
@@ -98,20 +117,13 @@ mod tests {
 
     #[test]
     fn new_store_has_zero_blocks() {
-        let path_str = "target/test_blockstore_2.bin";
+        let path_str = "target/test_blockstore_1.bin";
         let path = Path::new(path_str);
         let _ = std::fs::remove_file(path); // clean slate
 
-        let store_res = BlockStore::open(path_str);
-        assert!(store_res.is_ok());
+        let mut store = BlockStore::open(path_str).unwrap();
 
-        let mut store = store_res.unwrap();
-
-        let n_res = store.num_blocks();
-        assert!(n_res.is_ok());
-
-        let n = n_res.unwrap();
-        assert_eq!(n, 0u64);
+        assert_eq!(store.num_blocks().unwrap(), 0u64);
 
         let _ = std::fs::remove_file(path); // clean slate
     }
@@ -122,16 +134,66 @@ mod tests {
         let path = Path::new(path_str);
         let _ = std::fs::remove_file(path); // clean slate
 
-        let store_res = BlockStore::open(path_str);
-        assert!(store_res.is_ok());
+        let mut store = BlockStore::open(path_str).unwrap();
+        let _ =store.allocate_block();
+        assert_eq!(store.num_blocks().unwrap(), 1u64);
 
-        let mut store = store_res.unwrap();
+        let _ = std::fs::remove_file(path); // clean slate
+    }
 
-        let n_res = store.num_blocks();
-        assert!(n_res.is_ok());
+    #[test]
+    fn write_and_read_block_roundtrip() {
+        let path_str = "target/test_blockstore_3.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
 
-        let n = n_res.unwrap();
-        assert_eq!(n, 0u64);
+        let buf = [1u8; 64];
+
+        let mut store = BlockStore::open(path_str).unwrap();
+        let _ = store.allocate_block();
+        let _ = store.write_block(0, buf);
+        let read_buf = store.read_block(0).unwrap();
+
+        assert_eq!(read_buf, buf);
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
+
+    #[test]
+    fn read_invalid_block_returns_err() {
+        let path_str = "target/test_blockstore_4.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let mut store = BlockStore::open(path_str).unwrap();
+        assert!(store.read_block(0).is_err());
+
+        let _ = store.allocate_block();
+        assert!(store.read_block(0).is_ok());
+        assert!(store.read_block(123).is_err());
+        assert!(matches!(store.read_block(123), Err(DBError::BlockOutOfBounds(..))));
+        assert!(matches!(store.read_block(42), Err(DBError::InvalidPage(..))));
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
+
+    #[test]
+    fn data_persists_across_reopen() {
+        let path_str = "target/test_blockstore_5.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let mut store = BlockStore::open(path_str).unwrap();
+        let _ = store.allocate_block();
+        let buf = [2u8; 64];
+        let _ = store.write_block(0, buf);
+
+        drop(store);
+
+        let mut new_store = BlockStore::open(path_str).unwrap();
+        let read_buf = new_store.read_block(0).unwrap();
+
+        assert_eq!(read_buf, buf);
 
         let _ = std::fs::remove_file(path); // clean slate
     }
