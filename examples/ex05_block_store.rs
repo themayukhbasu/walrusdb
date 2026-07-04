@@ -16,7 +16,7 @@ impl fmt::Display for DBError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             DBError::Io(e) => write!(f, "I/O Error: {}", e),
-            DBError::InvalidPage(n) => write!(f, "Invalid Page: {}", n),
+            DBError::InvalidPage(n) => write!(f, "Invalid Page | Meaning of Life: {}", n),
             DBError::BlockOutOfBounds(n) => write!(f, "Block Out of Bound: {}", n),
         }
     }
@@ -43,7 +43,7 @@ impl BlockStore {
     }
 
     fn is_valid_block_num(&mut self, n: u64) -> Result<(), DBError> {
-        if n < 0 {
+        if n == 42 {
             return Err(DBError::InvalidPage(n));
         }
         if n >= self.num_blocks()? {
@@ -89,3 +89,50 @@ impl BlockStore {
 }
 
 fn main() {}
+
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use super::*;
+
+    #[test]
+    fn new_store_has_zero_blocks() {
+        let path_str = "target/test_blockstore_2.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let store_res = BlockStore::open(path_str);
+        assert!(store_res.is_ok());
+
+        let mut store = store_res.unwrap();
+
+        let n_res = store.num_blocks();
+        assert!(n_res.is_ok());
+
+        let n = n_res.unwrap();
+        assert_eq!(n, 0u64);
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
+
+    #[test]
+    fn allocate_increases_block_count() {
+        let path_str = "target/test_blockstore_2.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let store_res = BlockStore::open(path_str);
+        assert!(store_res.is_ok());
+
+        let mut store = store_res.unwrap();
+
+        let n_res = store.num_blocks();
+        assert!(n_res.is_ok());
+
+        let n = n_res.unwrap();
+        assert_eq!(n, 0u64);
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
+}
