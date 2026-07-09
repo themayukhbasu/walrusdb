@@ -27,24 +27,20 @@ fn main(){
             DBError::FileAlreadyExists => println!("File already exists"),
         },
     }
-    let mut buffer = [0u8;8];
+
     let mut input = String::new();
     read_input(&mut input, "first".to_string());
     let _first_input = input.trim().parse::<u16>().expect("Please enter a valid integer");
-    buffer[0..2].copy_from_slice( &_first_input.to_le_bytes());
     read_input(&mut input, "second".to_string());
     let _second_input = input.trim().parse::<u32>().expect("Please enter a valid integer");
-    buffer[2..6].copy_from_slice(&_second_input.to_le_bytes());
     read_input(&mut input, "third".to_string());
     let _third_input = input.trim().parse::<u8>().expect("Please enter a valid integer");
-    buffer[6] = _third_input.to_le_bytes()[0];
+    let mut buffer = encode_into_buffer(_first_input, _second_input, _third_input);
     write_to_file(_file_name, &buffer).expect("Failed to write to file");
     buffer = [0u8;8];
     read_to_file(_file_name, &mut buffer).expect("Failed to read from file");
     println!("Read data from file: {:?}", buffer);
-    let _first_input = u16::from_le_bytes([buffer[0], buffer[1]]);
-    let _second_input = u32::from_le_bytes([buffer[2], buffer[3], buffer[4], buffer[5]]);
-    let _third_input = u8::from_le_bytes([buffer[6]]);
+    let (_first_input, _second_input, _third_input) = decode_from_buffer(&buffer);
     println!("Read integers from file: {}, {}, {}", _first_input, _second_input, _third_input);
 }
 
@@ -61,6 +57,24 @@ fn create_file(file_name: &str) -> Result<(), DBError> {
         Err(DBError::FileAlreadyExists)
     }
 }
+
+fn encode_into_buffer(first: u16, second: u32, third: u8) -> [u8; 8] {
+        let mut buffer = [0u8; 8];
+
+        buffer[0..2].copy_from_slice(&first.to_le_bytes());
+        buffer[2..6].copy_from_slice(&second.to_le_bytes());
+        buffer[6] = third;
+
+        buffer
+    }
+
+    fn decode_from_buffer(buffer: &[u8; 8]) -> (u16, u32, u8) {
+        let first = u16::from_le_bytes(buffer[0..2].try_into().unwrap());
+        let second = u32::from_le_bytes(buffer[2..6].try_into().unwrap());
+        let third = buffer[6];
+
+        (first, second, third)
+    }
 
 fn read_input(input: &mut String, count: String) {
     input.clear();
@@ -91,24 +105,6 @@ mod tests {
     use super::*;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn encode_into_buffer(first: u16, second: u32, third: u8) -> [u8; 8] {
-        let mut buffer = [0u8; 8];
-
-        buffer[0..2].copy_from_slice(&first.to_le_bytes());
-        buffer[2..6].copy_from_slice(&second.to_le_bytes());
-        buffer[6] = third;
-
-        buffer
-    }
-
-    fn decode_from_buffer(buffer: &[u8; 8]) -> (u16, u32, u8) {
-        let first = u16::from_le_bytes([buffer[0], buffer[1]]);
-        let second = u32::from_le_bytes([buffer[2], buffer[3], buffer[4], buffer[5]]);
-        let third = buffer[6];
-
-        (first, second, third)
-    }
 
     fn unique_file_name() -> String {
         let nanos = SystemTime::now()
