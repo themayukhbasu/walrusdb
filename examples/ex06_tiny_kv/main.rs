@@ -13,7 +13,7 @@ fn main() -> Result<(), DBError> {
     // let path = Path::new(path_str);
     // let _ = std::fs::remove_file(path);
 
-    let mut db = TinyKV::init(path_str)?;
+    let db = TinyKV::init(path_str)?;
 
     // println!("{:?}", db.get_all());
     // println!("==========");
@@ -30,21 +30,6 @@ fn main() -> Result<(), DBError> {
     repl(db)?;
 
     Ok(())
-}
-
-fn print_get(db: &mut TinyKV, key: &str) -> Result<Option<String>, DBError> {
-    let some_value = db.get(key)?;
-    let val = match some_value {
-        Some(val) => {
-            println!("Value = {}", val);
-            Some(val)
-        }
-        None => {
-            println!("Key not present in DB: {}", key);
-            None
-        }
-    };
-    Ok(val)
 }
 
 fn compile(db: &mut TinyKV, query: &str) -> Result<(), DBError> {
@@ -94,4 +79,122 @@ fn repl(mut db: TinyKV) -> Result<(), DBError> {
         compile(&mut db, input)?
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn put_and_get_returns_value() {
+        let path_str = "target/test_tinykvstore_1.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let mut db = TinyKV::init(path_str).unwrap();
+        let (key, value) = ("foo", "bar");
+        db.put(key, value).expect("TODO: panic message");
+        let val = db.get(key).unwrap().unwrap();
+        assert_eq!(value, val);
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
+
+    #[test]
+    fn get_missing_key_returns_none() {
+        let path_str = "target/test_tinykvstore_2.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let mut db = TinyKV::init(path_str).unwrap();
+        let val = db.get("foo").unwrap();
+        assert_eq!(None, val);
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
+
+    #[test]
+    fn delete_removes_key() {
+        let path_str = "target/test_tinykvstore_3.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let mut db = TinyKV::init(path_str).unwrap();
+
+        let (key, value) = ("foo", "bar");
+        db.put(key, value).unwrap();
+
+        db.delete(key).unwrap();
+
+        let val = db.get("foo").unwrap();
+        assert_eq!(None, val);
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
+
+    #[test]
+    fn overwrite_existing_key() {
+        let path_str = "target/test_tinykvstore_4.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let mut db = TinyKV::init(path_str).unwrap();
+
+        db.put("foo", "a").unwrap();
+
+        let val = db.get("foo").unwrap();
+        assert_eq!(Some("a".to_string()), val);
+
+        db.put("foo", "b").unwrap();
+
+        let val = db.get("foo").unwrap();
+        assert_eq!(Some("b".to_string()), val);
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
+
+    #[test]
+    fn delete_nonexistent_key_is_noop() {
+        let path_str = "target/test_tinykvstore_5.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let mut db = TinyKV::init(path_str).unwrap();
+
+        let res = db.delete("foo");
+
+        assert!(res.is_ok());
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
+
+
+    #[test]
+    fn data_persists_across_reopen() {
+        let path_str = "target/test_tinykvstore_6.bin";
+        let path = Path::new(path_str);
+        let _ = std::fs::remove_file(path); // clean slate
+
+        let mut db = TinyKV::init(path_str).unwrap();
+
+        let (key1, val1) = ("foo", "bar");
+        let (key2, val2) = ("baz", "qux");
+
+        db.put(key1, val1).unwrap();
+        db.put(key2, val2).unwrap();
+
+        drop(db);
+
+        let mut db = TinyKV::init(path_str).unwrap();
+
+        let val = db.get(key1).unwrap().unwrap();
+        assert_eq!(val1, val);
+
+
+
+        let val = db.get(key2).unwrap().unwrap();
+        assert_eq!(val2, val);
+
+        let _ = std::fs::remove_file(path); // clean slate
+    }
 }
