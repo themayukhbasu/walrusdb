@@ -1,4 +1,12 @@
-fn main() {
+fn main() {loop_test()}
+fn loop_test() {
+    let x: u64 = 5;
+    for i in 0..x {
+        println!("{}", i);
+    }
+}
+
+fn buf_test() {
     println!("============= [u8; 4] to u32 ==============");
     let buf = [0x2a, 0x2a, 0x2a, 0x2a];
     let n = u32::from_le_bytes(buf);

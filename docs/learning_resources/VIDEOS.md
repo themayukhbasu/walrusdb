@@ -13,7 +13,7 @@
 - [Understanding Rust – Or How to Stop Worrying & Love the Borrow-Checker • Steve Smith • YOW! 2024](https://youtu.be/zfb1y8yn8QI?si=SdbHI3C5Ka9eH_B6) - Advanced - Well Detailed
 - [Advanced Rust Programming Techniques • Florian Gilcher • GOTO 2024](https://youtu.be/QQzAWxYKPSE?si=1aVgfjl7G6amWeR4) - Advanced
 - [Will Crichton: Rust for Everyone](https://youtu.be/R0dP-QR5wQo?si=9-3TdD5wrco3URw3) - Beginner - Intermediate
-
+- [Why Rust is different, with Alice Rhyl](https://youtu.be/q9xD36NCtZ8) - Intermediate - Informative - Important
 
 ### Rust Motivations
 
