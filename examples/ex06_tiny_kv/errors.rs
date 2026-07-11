@@ -29,6 +29,12 @@ impl From<std::str::Utf8Error> for DecodeError {
     }
 }
 
+impl From<DecodeError> for DBError {
+    fn from(e: DecodeError) -> Self {
+        DBError::Decode(e)
+    }
+}
+
 // Display trait
 impl fmt::Display for DBError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
