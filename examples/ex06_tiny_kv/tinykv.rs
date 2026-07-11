@@ -1,4 +1,4 @@
-use crate::blockstore;
+use crate::{blockstore, print_get};
 use crate::errors;
 
 use crate::record::{Record, RecordStatus};
@@ -42,44 +42,72 @@ impl TinyKV {
 
     fn scan_empty(&mut self) -> Result<Option<u64>, DBError> {
         // Returns index of first empty block
-
+        println!("In Scan empty:");
         let db_size = self.store.num_blocks()?;
         for i in 0..db_size {
             let record: Record = self.read(i)?;
+            println!("{:?}", record);
             if record.status == RecordStatus::Empty {
-                return Ok((Some(i)));
+                return Ok(Some(i));
             }
         }
-        return Ok((None));
+        return Ok(None);
+    }
+
+    fn next_empty(&mut self) -> Result<u64, DBError> {
+        let some_block_idx = self.scan_empty()?;
+
+        let block_idx = match some_block_idx {
+            Some(idx) => idx,
+            None => {
+                let idx = self.store.allocate_block()?;
+                println!("idex after allocate = {}", idx);
+                idx
+            }
+        };
+        println!("next empty index = {}", block_idx);
+        Ok(block_idx)
     }
 
     pub fn put(&mut self, key: &str, value: &str) -> Result<(), DBError> {
-        let (some_record, some_block_idx) = self.scan_live_key(key)?;
-        match (some_record, some_block_idx) {
+        let new_record = Record::new(RecordStatus::Live, key, value)?;
+
+        let (some_existing_record, some_block_idx) = self.scan_live_key(key)?;
+        match (some_existing_record, some_block_idx) {
             (None, None) => {
                 // no live key
 
-                // scan empty
-                //      if no empty
-                //      allocate
-                // write to empty
+                let block_idx = self.next_empty()?;
+                println!(
+                    "No live key for {}, writing to new index: {}",
+                    key, block_idx
+                );
+                println!("{:?}", new_record);
+                self.write(block_idx, new_record)?;
+                Ok(())
             }
-            (Some(record), Some(block_idx)) => {
-                // if record size is same
-                //      overwrite record
-                // else if record size not same
-                //      delete
-                //      scan empty
-                //          if no empty
-                //          allocate
-                //      write to empty
+            (Some(existing_record), Some(block_idx)) => {
+                // live record exist
 
-                todo!()
+                if existing_record.size() == new_record.size() {
+                    println!(
+                        "Found live key for {} at index {}, overwriting...",
+                        key, block_idx
+                    );
+                    self.write(block_idx, new_record)?;
+                } else {
+                    self.delete_idx(block_idx, existing_record)?;
+                    let idx = self.next_empty()?;
+                    println!(
+                        "Live key {} doesn't match size. Writing to new index: {}",
+                        key, idx
+                    );
+                    self.write(idx, new_record)?;
+                }
+                Ok(())
             }
-            (None, Some(_)) | (Some(_), None) => todo!(),
+            _ => Ok(()),
         }
-
-        todo!()
     }
 
     pub fn get(&mut self, key: &str) -> Result<Option<String>, DBError> {
@@ -90,7 +118,29 @@ impl TinyKV {
             Some(record) => Ok(Some(record.value)),
         }
     }
+
+    fn delete_idx(&mut self, block_idx: u64, mut existing_record: Record) -> Result<(), DBError> {
+        existing_record.status = RecordStatus::Deleted;
+        self.write(block_idx, existing_record)?;
+        return Ok(());
+    }
     pub fn delete(&mut self, key: &str) -> Result<(), DBError> {
-        todo!()
+        let (some_existing_record, some_block_idx) = self.scan_live_key(key)?;
+        match (some_existing_record, some_block_idx) {
+            (None, None) => Ok(()),
+            (Some(existing_record), Some(block_idx)) => self.delete_idx(block_idx, existing_record),
+            _ => Ok(()),
+        }
+    }
+
+    pub fn get_all(&mut self) -> Result<Vec<(u64, String, String)>, DBError> {
+        let db_size = self.store.num_blocks()?;
+        println!("DB Size: {}", db_size);
+        let mut records = vec![];
+        for i in 0..db_size {
+            let record = Record::decode(self.store.read(i)?)?;
+            records.push((i, record.key, record.value));
+        }
+        Ok(records)
     }
 }

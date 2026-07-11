@@ -1,7 +1,7 @@
 use crate::blockstore::BLOCK_SIZE;
 use crate::errors::{DBError, DecodeError};
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum RecordStatus {
     Empty = 0,
     Live = 1,
@@ -21,6 +21,7 @@ impl TryFrom<u8> for RecordStatus {
     }
 }
 
+#[derive(Debug)]
 pub struct Record {
     pub status: RecordStatus,
     key_len: u16,
@@ -47,7 +48,7 @@ impl Record {
         })
     }
 
-    fn size(&self) -> u16 {
+    pub fn size(&self) -> u16 {
         5 + self.key_len + self.val_len as u16
     }
     pub fn encode(&self) -> [u8; 64] {

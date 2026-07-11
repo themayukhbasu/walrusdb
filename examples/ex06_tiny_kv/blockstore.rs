@@ -26,7 +26,7 @@ impl BlockStore {
     pub fn allocate_block(&mut self) -> Result<u64, DBError> {
         let size = self.file.seek(SeekFrom::End(0))?;
         self.file.write_all(&[0u8; BLOCK_SIZE])?;
-        Ok((size / BLOCK_SIZE as u64) - 1)
+        Ok(size / BLOCK_SIZE as u64)
     }
 
     fn validate_block_idx(&mut self, block_idx: u64) -> Result<(), DBError> {
