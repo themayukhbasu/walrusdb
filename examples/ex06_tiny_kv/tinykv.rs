@@ -42,11 +42,9 @@ impl TinyKV {
 
     fn scan_empty(&mut self) -> Result<Option<u64>, DBError> {
         // Returns index of first empty block
-        println!("In Scan empty:");
         let db_size = self.store.num_blocks()?;
         for i in 0..db_size {
             let record: Record = self.read(i)?;
-            println!("{:?}", record);
             if record.status == RecordStatus::Empty {
                 return Ok(Some(i));
             }
@@ -61,11 +59,9 @@ impl TinyKV {
             Some(idx) => idx,
             None => {
                 let idx = self.store.allocate_block()?;
-                println!("idex after allocate = {}", idx);
                 idx
             }
         };
-        println!("next empty index = {}", block_idx);
         Ok(block_idx)
     }
 
@@ -78,11 +74,6 @@ impl TinyKV {
                 // no live key
 
                 let block_idx = self.next_empty()?;
-                println!(
-                    "No live key for {}, writing to new index: {}",
-                    key, block_idx
-                );
-                println!("{:?}", new_record);
                 self.write(block_idx, new_record)?;
                 Ok(())
             }
@@ -90,18 +81,10 @@ impl TinyKV {
                 // live record exist
 
                 if existing_record.size() == new_record.size() {
-                    println!(
-                        "Found live key for {} at index {}, overwriting...",
-                        key, block_idx
-                    );
                     self.write(block_idx, new_record)?;
                 } else {
                     self.delete_idx(block_idx, existing_record)?;
                     let idx = self.next_empty()?;
-                    println!(
-                        "Live key {} doesn't match size. Writing to new index: {}",
-                        key, idx
-                    );
                     self.write(idx, new_record)?;
                 }
                 Ok(())
@@ -133,13 +116,13 @@ impl TinyKV {
         }
     }
 
-    pub fn get_all(&mut self) -> Result<Vec<(u64, String, String)>, DBError> {
+    pub fn dump(&mut self) -> Result<Vec<(u64, Record)>, DBError> {
         let db_size = self.store.num_blocks()?;
         println!("DB Size: {}", db_size);
         let mut records = vec![];
         for i in 0..db_size {
             let record = Record::decode(self.store.read(i)?)?;
-            records.push((i, record.key, record.value));
+            records.push((i, record));
         }
         Ok(records)
     }

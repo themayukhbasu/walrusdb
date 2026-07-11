@@ -5,7 +5,6 @@ mod tinykv;
 
 use crate::errors::DBError;
 use std::io;
-use std::path::Path;
 use tinykv::TinyKV;
 
 fn main() -> Result<(), DBError> {
@@ -36,16 +35,22 @@ fn compile(db: &mut TinyKV, query: &str) -> Result<(), DBError> {
     let commands: Vec<&str> = query.split_whitespace().collect();
 
     let _ = match commands.as_slice() {
-        ["GET", rest @ ..] => {
-            let value = db.get(rest[0])?;
+        ["GET", key] => {
+            let value = db.get(key)?;
             match value {
                 Some(s) => println!("Value = {}", s),
                 None => println!("Sorry, no such key is present in DB!"),
             }
         }
-        ["PUT", rest @ ..] => db.put(rest[0], rest[1..].join(" ").as_str())?,
-        ["DELETE", rest @ ..] => db.delete(rest[0])?,
-        ["DUMP"] => println!("DB dump = {:?}", db.get_all()),
+        ["GET"] => println!("Usage: GET <key>"),
+
+        ["PUT", key, rest @ ..] => db.put(key, rest.join(" ").as_str())?,
+        ["PUT"] => println!("Usage: PUT <key> <value>"),
+
+        ["DELETE", key] => db.delete(key)?,
+        ["DELETE"] => println!("Usage: DELETE <key>"),
+
+        ["DUMP"] => println!("DB dump = {:?}", db.dump()),
         _ => println!("Unknown Command"),
     };
     Ok(())
@@ -83,6 +88,7 @@ fn repl(mut db: TinyKV) -> Result<(), DBError> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
     use super::*;
 
     #[test]

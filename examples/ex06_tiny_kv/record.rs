@@ -49,7 +49,7 @@ impl Record {
     }
 
     pub fn size(&self) -> u16 {
-        5 + self.key_len + self.val_len as u16
+        5 + self.key_len + self.val_len
     }
     pub fn encode(&self) -> [u8; 64] {
         let mut buf = [0u8; BLOCK_SIZE];
