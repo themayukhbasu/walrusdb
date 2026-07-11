@@ -10,6 +10,7 @@ description: Generate a PR description and save it as a markdown file. Use when 
 1. Run `git branch --show-current` to get the current branch name.
 2. Run `git log main..HEAD --oneline` and `git diff main...HEAD` to understand all changes on this branch.
 3. Write a PR description with:
+   - **Title**: Short PR Title
    - **Summary**: 2-4 bullet points on what changed and why.
    - **Test plan**: bulleted checklist of how to verify the changes.
 4. Create the directory `target/docs/` if it doesn't exist.
