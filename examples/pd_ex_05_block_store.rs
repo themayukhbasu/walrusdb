@@ -52,6 +52,7 @@ impl BlockStore {
 
     fn allocate_block(&mut self) -> Result<u64, DBError>{
         let block_num = self.num_of_blocks()?;
+        self.file.seek(SeekFrom::End(0))?;
         let zero_block = [0u8; BLOCK_SIZE];
         self.file.write_all(&zero_block)?;
         Ok(block_num)
