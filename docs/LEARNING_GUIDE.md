@@ -60,18 +60,22 @@ Don't try to learn all of Rust first; learn it *as the project demands it*. But 
 
 ---
 
-## Phase 3 — WAL & crash recovery
+## Phase 3 — Buffer pool, WAL & crash recovery
 
-**DB concepts:** the write-ahead principle (log before you mutate); atomicity and durability; replay; idempotent recovery; checkpointing; `fsync` and the durability/performance tradeoff.
+**DB concepts:** buffer management — page cache, pinning, dirty pages, eviction policies (LRU/clock), and the steal/no-steal, force/no-force taxonomy; the write-ahead principle (log before you mutate); atomicity and durability; replay; idempotent recovery; checkpointing; physical vs. logical logging; `fsync` and the durability/performance tradeoff.
 
-**Rust concepts:** buffered vs unbuffered writes, explicit flushing/syncing, sequencing side effects deterministically, modeling log records as enums.
+**Rust concepts:** designing a cache the borrow checker will accept — who owns cached page bytes and how callers get access to them; interior mutability as a *considered* decision rather than an escape hatch; realizing that a pin count is a hand-rolled runtime borrow. Plus buffered vs unbuffered writes, explicit flushing/syncing, sequencing side effects deterministically, modeling log records as enums.
 
-**Read:** DI ch. 5 (transaction processing & recovery) — focus on the recovery portions. DDIA ch. 3 (write-ahead logs in context).
+**Read:** DI ch. 5 (transaction processing & recovery) — the buffer-management opening *and* the recovery portions. DDIA ch. 3 (write-ahead logs in context). Also read DI's ARIES discussion as *read-but-don't-implement*: knowing what a production recovery algorithm handles — and why your simpler scheme deliberately doesn't — is as instructive as what you do build.
 
 **Be able to explain:**
-- Why the log write must hit disk *before* the page write, and what breaks if you reverse them.
+- Why a pinned page must not be evicted — in database terms and in Rust borrow terms, and why those are the same statement.
+- Where your design sits in the steal/no-steal, force/no-force space, and what that choice costs.
+- Why the log write must hit disk *before* the page write (including before a dirty-page eviction), and what breaks if you reverse them.
+- Physical vs. logical logging: what you chose, and what the other choice would have made harder.
 - How replay makes recovery idempotent.
 - What a checkpoint is and why you need one.
+- What `kill -9` actually tests, what it doesn't (`fsync`), and what would.
 
 ---
 

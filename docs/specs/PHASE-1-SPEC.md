@@ -17,7 +17,7 @@
 - Wiring the Phase 0 REPL to the pager so `PUT`/`GET`/`DELETE` persist across restarts.
 
 ### Explicitly out of scope (do not build yet)
-- **Buffer pool / page cache.** In Phase 1 every read goes to disk and every write goes to disk immediately. A cache is a Phase 2+ concern.
+- **Buffer pool / page cache.** In Phase 1 every read goes to disk and every write goes to disk immediately. The buffer pool arrives in Phase 3.
 - **B-tree.** Your store can be a simple linear scan across pages for now. Phase 2 will replace it with a real index.
 - **WAL / crash safety.** A kill mid-write can corrupt state here. That's fine; Phase 3 fixes it.
 - **Concurrency.** Single-threaded throughout.
@@ -74,9 +74,9 @@ The simplest approach: a dedicated page (e.g., page 0) that acts as the free lis
 
 This is intentionally simple. It has known weaknesses (the free list page itself can fill up; you don't handle fragmentation). That's fine for Phase 1.
 
-### 4. Store layer (`src/store.rs`)
+### 4. Store integration (`src/store.rs`) — thin, wiring not new design
 
-This replaces the `HashMap` from Phase 0. It exposes the same interface:
+This isn't a new data structure, it's Pager + Page glued behind the same interface Phase 0's `HashMap` already exposed:
 
 ```
 put(key, value)
@@ -88,9 +88,9 @@ Internally it uses the Pager to read/write pages. For Phase 1, a linear scan —
 
 **On delete:** mark the record as deleted somehow (a tombstone byte in the record header, or simply compact the page). Decide which and document it.
 
-### 5. REPL integration (`src/main.rs`)
+### 5. REPL wiring (`src/main.rs`) — trivial, your test harness, not the point
 
-The REPL from Phase 0 changes only at the store initialization line — swap `HashMap` for your new `Store`. Everything else stays the same. This is the seam that proves the abstraction is clean.
+The REPL from Phase 0 changes only at the store initialization line — swap `HashMap` for your new `Store`. Everything else stays the same. Its only job here is letting you drive the pager interactively to prove the exit demo works.
 
 ---
 
