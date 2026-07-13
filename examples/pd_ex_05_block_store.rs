@@ -44,7 +44,9 @@ impl BlockStore {
     }
 
     fn num_of_blocks(&mut self) -> Result<u64, DBError>{
+        let current_cursor = self.file.stream_position()?;
         let size = self.file.seek(SeekFrom::End(0))?;
+        self.file.seek(SeekFrom::Start(current_cursor))?;
         Ok(size / BLOCK_SIZE as u64)
     }
 
