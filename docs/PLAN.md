@@ -63,32 +63,36 @@ The committed roadmap for building WalRusDB, phase by phase.
 3. Implement insert **without** splits (assume space) — get the happy path working.
 4. Implement **node splitting** on overflow, including splitting the root (the tricky one).
 5. Implement a **cursor** for ordered range scans.
-6. *(Stretch within the phase)* deletion with merge/rebalance — notoriously fiddly; treat it as its own mini-project.
+6. Deletion — a minimal delete path (find the key in its leaf, remove it) is **required**, because Phase 5's `ROLLBACK` of an `INSERT` *is* a delete; you cannot arrive at transactions without one. Full merge/rebalance on underflow remains a *stretch* — notoriously fiddly; treat it as its own mini-project.
 
 **You build:** the entire B-tree. This is the phase that most repays doing yourself.
 **Agent may scaffold:** nothing core. It may help you design *test cases* that stress splits.
 
 **Exit demo:** insert keys in random order; a range scan returns them sorted; the tree survives restart.
 
-> **Heads-up for later:** the choices you make here about page references and node ownership will shape Phases 3 and 5. Keep node access mediated through the pager rather than holding long-lived references into pages — your future concurrent self will thank you. The borrow checker will likely push you this way anyway; listen to it.
+> **Heads-up for later:** the choices you make here about page references and node ownership will shape Phases 3 and 5. Keep node access mediated through the pager rather than holding long-lived references into pages — your future concurrent self will thank you. The borrow checker will likely push you this way anyway; listen to it. In Phase 3 a buffer pool slides in behind that same pager interface, so this discipline pays off immediately.
 
 ---
 
-## Phase 3 — WAL & crash recovery  *(Hard)*
+## Phase 3 — Buffer pool, WAL & crash recovery  *(Hard)*
 
-**Goal:** It survives being killed mid-write. Durability and atomicity at the single-operation level.
+**Goal:** Pages live in a real in-memory cache with an explicit ownership story, and the database survives being killed mid-write. Durability and atomicity at the single-operation level.
 
 **Steps:**
-1. Understand the invariant: **log the change before you change the page** (write-ahead).
-2. Implement an append-only WAL: serialize each change as a record, fsync appropriately.
-3. On startup, **replay** the WAL to bring pages to a consistent state.
-4. Implement a checkpoint/truncation strategy so the log doesn't grow forever.
-5. Test recovery by killing the process at deliberately awkward moments.
+1. Build a **buffer pool**: an in-memory page cache with pinning, dirty-page tracking, and an eviction policy (LRU or clock — start simple). Route all page access through it. This is the ownership lesson the whole project was chosen for: a pin count is a borrow the compiler can't see, so you get to design the runtime version yourself.
+2. Understand the invariant: **log the change before you change the page** (write-ahead) — and notice how it constrains the buffer pool: a dirty page must not be evicted to disk before the log records that dirtied it are durable.
+3. Decide **physical vs. logical logging** (page images/diffs vs. operations). This choice shapes replay, checkpointing, and Phase 5's rollback — write it down in `docs/decisions/` before coding.
+4. Implement an append-only WAL: serialize each change as a record, fsync appropriately.
+5. On startup, **replay** the WAL to bring pages to a consistent state.
+6. Implement a checkpoint/truncation strategy so the log doesn't grow forever — now definable precisely: flush dirty pages, then truncate the log.
+7. Test recovery by killing the process at deliberately awkward moments.
 
-**You build:** WAL format, write path ordering, replay logic.
+**You build:** buffer pool, WAL format, write path ordering, replay logic.
 **Agent may scaffold:** a test harness that simulates crashes.
 
 **Exit demo:** `PUT`, kill -9 mid-operation, restart → the database is in a consistent state (either the write fully applied or fully absent).
+
+> **What the demo actually proves:** `kill -9` tests write *ordering* and replay, not `fsync` durability — the OS page cache survives process death, so even unsynced writes usually reach disk. Only power loss (or a fault-injection layer) exercises fsync. Know precisely which guarantee your demo demonstrates; "what does kill -9 actually test?" is a classic interview trap.
 
 ### → DONE I: a crash-safe database... almost. Reach it fully after Phase 4.
 
@@ -100,14 +104,14 @@ The committed roadmap for building WalRusDB, phase by phase.
 
 **Steps:**
 1. Define a **catalog**: tables, columns, types. Persist it (it's just data in your own store).
-2. Write a **tokenizer**, then a **parser** for a tiny SQL subset: `CREATE TABLE`, `INSERT`, `SELECT ... WHERE`. Hand-rolled — this is parsing fundamentals, not a crate job.
+2. Write a **tokenizer**, then a **parser** for a tiny SQL subset: `CREATE TABLE`, `INSERT`, `SELECT ... WHERE`, `DELETE ... WHERE`. Hand-rolled — this is parsing fundamentals, not a crate job. (`DELETE` is in the subset deliberately: Phase 5's rollback demo needs something to undo, so the engine must be able to remove rows before you get there.)
 3. Map a row to a B-tree key/value (e.g., primary key → serialized row).
 4. Build a small **execution** path: a `SELECT` becomes a B-tree scan + filter; `INSERT` becomes a B-tree insert.
 
 **You build:** catalog, tokenizer, parser, executor.
 **Agent may scaffold:** nothing core. Parsing is a classic learning target.
 
-**Exit demo:** `CREATE TABLE users (id INT, name TEXT);` then `INSERT`, then `SELECT * FROM users WHERE id = 3;` returns the row — and survives a restart.
+**Exit demo:** `CREATE TABLE users (id INT, name TEXT);` then `INSERT`, then `SELECT * FROM users WHERE id = 3;` returns the row; `DELETE FROM users WHERE id = 3;` removes it — and it all survives a restart.
 
 ### ✅ DONE I — "I built a database." A crash-safe database you drive with SQL.
 
@@ -119,9 +123,9 @@ The committed roadmap for building WalRusDB, phase by phase.
 
 **Steps:**
 1. Add `BEGIN` / `COMMIT` / `ROLLBACK`; group operations into atomic units (extend the WAL with transaction boundaries).
-2. Study isolation levels; pick one to implement first (e.g., snapshot isolation or read-committed).
+2. Study isolation levels; implement **read-committed via locking** first. (Snapshot isolation is not a starting option — it essentially *is* MVCC, which is step 4's stretch; you can't have SI without versioned data.)
 3. Add concurrency control: start with coarse locking/latching, understand its cost, then refine.
-4. *(Stretch)* a taste of **MVCC** — versioned values so readers don't block writers.
+4. *(Stretch)* **MVCC** — versioned values so readers don't block writers — and with it, upgrade the isolation level to snapshot isolation.
 5. Let Rust enforce thread-safety: `Send`/`Sync`, `Arc`, `Mutex`/`RwLock`. Fight the compiler here; it's teaching you data-race freedom.
 
 **You build:** transaction manager, locking/concurrency control.
@@ -175,7 +179,9 @@ You will pick the capstone direction when you arrive here. Raft is the recommend
 
 ## Progress tracking
 
-- Keep a running checklist of phase steps wherever you like (issues, a `PROGRESS.md`, or your tool of choice).
+- Each phase gets a **spec** in `docs/specs/PHASE-N-SPEC.md`: scope, components, design questions, decisions to document, and the exit demo in concrete form. The spec is the working contract for the phase; this plan is the map.
+- Warm-up **exercises** live in `docs/exercises/` — small, isolated reps for the Rust/byte-level skills a phase needs before the real build starts.
+- Journal entries are named `<sl_no>-phase<N>-<desc>.md` in `docs/journal/`.
 - **End every working session** by either closing a step or writing a `docs/journal/` entry about where you got stuck. The journal is the real progress log.
 - When you make a non-obvious design choice, drop a `docs/decisions/` note *before* you move on — your future self debugging Phase 5 will need to know why Phase 2 looks the way it does.
 
