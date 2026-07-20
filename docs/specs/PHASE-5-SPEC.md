@@ -75,6 +75,7 @@ Multiple client threads (or connections) sharing the engine. This is where the c
 - What actually gets shared — `Arc<Mutex<Engine>>` wholesale, or finer structure (buffer pool, lock table, WAL each with their own synchronization)? Start wholesale; refine with evidence.
 - Your Phase 3 buffer-pool API decision resurfaces *hard* here: whatever `get_page` returns must be safe when two threads hold one. If Phase 3's design survives contact, that decision note was money in the bank; if not, the redesign is the journal entry of the phase.
 - Keep a running list: every compiler rejection in this phase is a would-be data race. Write down what each was protecting you from. That list is the "why Rust" story for every interview, in your own code.
+- **Note from Phase 1:** the "is the db file still there" check was parked as an inline, sampled, single-threaded check (every Nth operation) specifically because a real watcher needs a background thread sharing state with the main thread — `Arc`/`Mutex`/atomics — which was ruled out of Phase 1 and 2 as concurrency creep. Now that those primitives are in scope, promote it: a real background thread doing the fstat-vs-stat inode check on a timer, signaling the main engine through whatever shared-state mechanism you land on for component 5. Small, but it's a genuine instance of "operational thread needs the same `Send`/`Sync` discipline as a client thread" — worth doing deliberately rather than skipping because it feels minor.
 
 #### 6. Stretch — MVCC → snapshot isolation
 

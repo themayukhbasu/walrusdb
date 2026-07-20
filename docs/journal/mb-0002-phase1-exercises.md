@@ -1,5 +1,7 @@
 # Phase 1 Exercises Journal
 
+> Author: @mb0850
+
 ## A. What I built:
 
 - Completed the 6 exercises in prep for Phase 1 implementation
@@ -91,20 +93,25 @@ fn decode(...) -> Result<Self, DecodeError> {
 
 ### 3. Why the compiler couldn't infer the error type in a `match` + `?`
 
-The match + ? one: This was in put. You had a match where every arm ended in Ok(()), followed by }?; and then a separate return Ok(()); after it. The compiler error was:     
-error[E0282/E0283]: type annotations needed                                                                                                                                   
-cannot infer type of the type parameter `E` declared on the enum `Result`                                                                                                     
+The match + ? one: This was in put. You had a match where every arm ended in Ok(()), followed by }?; and then a separate return Ok(()); after it. The compiler error was:
+
+```
+error[E0282/E0283]: type annotations needed
+cannot infer type of the type parameter `E` declared on the enum `Result`
+```
+
 The fix was deleting the ?; and the redundant return Ok(());, letting the match itself be put's tail expression.
 
-**Note**: _Hit this error, tried a few things based on the compiler's suggestion until it compiled — didn't fully          
-understand why at the time._
+**Note**: _Hit this error, tried a few things based on the compiler's suggestion until it compiled — didn't fully understand why at the time._
 
 ### 4. `break` needing to match the function's `Result` return type
 
-The break one: This was in repl. You had loop { ... break; ... } with repl's signature -> Result<(), DBError>. The compiler said:                                             
-error[E0308]: mismatched types                                                                                                                                                
-expected `Result<(), DBError>`, found `()`                                                                                                                                    
-help: give the `break` a value of the expected type: `break Ok(());`
+The break one: This was in repl. You had loop { ... break; ... } with repl's signature -> Result<(), DBError>. The compiler said:
 
-**Note**: _Hit this error, tried a few things based on the compiler's suggestion until it compiled — didn't fully          
-understand why at the time._
+```
+error[E0308]: mismatched types
+expected `Result<(), DBError>`, found `()`
+help: give the `break` a value of the expected type: `break Ok(());`
+```
+
+**Note**: _Hit this error, tried a few things based on the compiler's suggestion until it compiled — didn't fully understand why at the time._

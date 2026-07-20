@@ -1,5 +1,7 @@
 # Phase 0 Journal — REPL + In-Memory KV Store
 
+> Author: @mb0850
+
 **What I built:**
 A REPL that accepts `GET`, `PUT`, `DELETE`, and `DUMP` commands against an in-memory key-value store backed by a `HashMap`. I structured the code with a `DB` struct and an `impl` block to keep the store logic separate from the REPL loop and the command parser.
 

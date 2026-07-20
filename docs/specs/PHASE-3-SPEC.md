@@ -42,6 +42,7 @@ An append-only file, separate from the database file, holding one record per cha
 
 **Design questions:**
 - **Physical or logical logging?** Physical: "page N, offset X, these bytes." Logical: "PUT key=…, value=…". This is the phase's central design decision — it shapes replay, checkpoint, and Phase 5's rollback (logical undo needs to know the *operation*; physical undo needs before-images). Decide first, document in `docs/decisions/`.
+  - **Note from Phase 1:** page compaction (in-place repack of a fragmented page, same page ID, no key/value semantics involved) has no natural logical record — it's not a client operation. A physical before/after page image logs it trivially; a logical scheme needs an explicit answer for it. Account for this case when you decide, don't discover it mid-implementation.
 - What's in a record besides the payload? At minimum you need framing (a length prefix) so records can be read back, and a way to detect a **torn tail** — the process died mid-append and the last record is garbage. How does replay recognize and safely ignore it? (A checksum per record is the standard answer; a length that runs past EOF is the cheap version.)
 - Do records carry a sequence number (LSN)? Not strictly required for Phase 3's scheme — but think about what replay-idempotence mechanism you're choosing (component 4) before deciding.
 - Model record types as a Rust **enum**; hand-roll the serialization exactly like Phase 1 records (this is deliberate reps).
@@ -76,7 +77,7 @@ Without this the WAL grows forever and recovery time grows with it. Now precisel
 
 The agent may scaffold the harness (spawning the process, killing it at signals/timings, checking invariants after restart) — the *kill points* and the *invariants checked* are yours to choose.
 
-Awkward moments worth hitting: mid-WAL-append (torn tail), after WAL fsync but before the in-memory page mutation, mid-checkpoint (each gap from component 5), immediately after truncation.
+Awkward moments worth hitting: mid-WAL-append (torn tail), after WAL fsync but before the in-memory page mutation, mid-checkpoint (each gap from component 5), immediately after truncation, mid-compaction-rewrite (the Phase 1 page-compaction overwrite is a single non-atomic write like any other page mutation — it needs the same write-ahead protection, so kill it mid-flight too).
 
 ---
 

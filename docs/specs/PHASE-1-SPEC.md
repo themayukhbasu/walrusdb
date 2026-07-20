@@ -6,6 +6,30 @@
 
 ---
 
+## My review of this spec
+
+- Versioning of file formats
+  - version 1 = no checksum
+  - version 2 = with checksum
+- Basic Checksum implementation (harder) without using lib
+- MAX_RECORD_SIZE = PAGE_SIZE - HEADER_SIZE - SINGLE_SLOT_OVERHEAD(pointer, offset)
+- defragmentation / reclamation / compaction
+- raise error if db file is deleted while db running
+  - can use some sort of sampling and watcher thread can be parked for phase 5 (every Nth operation, check if file still exists)
+
+### Tests
+
+- manually corrupt data to confirm data corruption identification
+  - partial corrupt file identification: if only 1 page is corrupted, then other pages should work fine.
+  - corruption checks even without checksum
+    - basic checks like key_len + value_len < max_record_size etc.
+- best fit vs first fit
+- triggers reclamation when a new record can fit only after reclamation instead of creating new page
+- max record size assert
+- manual seek shouldn't change target slot for read/write
+
+---
+
 ## What is and isn't in scope
 
 ### In scope
