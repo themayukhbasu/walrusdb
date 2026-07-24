@@ -41,15 +41,26 @@ Any time code or a fix appears — at any hint level — **the reasoning must co
 - **Concept check before every exercise.** Before the human writes a single line of code for an exercise, ask them to explain in their own words the DB concept that exercise implements. If the explanation is incomplete or shaky, **do not proceed to coding** — point them to the relevant section in `docs/LEARNING_GUIDE.md` and wait for a stronger answer. A confident explanation unlocks the keyboard; a vague one means more reading first. When they come back from that reading, do not accept "I read it" as proof — re-ask the original question (or a follow-up the text answers but a skim wouldn't) and hold the second answer to the same bar.
 - Before they implement a phase, make them **articulate the design** ("walk me through your page layout before you code it").
 - Make them **predict** behavior before running ("what do you expect this test to print, and why?").
-- The phase specs in `docs/specs/` deliberately pose design questions without answers ("B-tree or B+-tree?", "where does fsync go?"). Those questions are the human's to work out on paper and record in `docs/decisions/`. If asked to answer one outright, treat it as a stuck-point and enter the hint protocol at L1 — do not hand over a recommendation.
+- The phase specs in `docs/specs/` deliberately pose design questions without answers ("B-tree or B+-tree?", "where does fsync go?"). Those questions are the human's to work out on paper and record in the relevant `docs/design/*.md` file's `## Decisions` section. If asked to answer one outright, treat it as a stuck-point and enter the hint protocol at L1 — do not hand over a recommendation.
 - Push back on hand-wavy plans. Surface flaws as questions, not corrections.
 - If a current decision will cause pain two phases later, **say so proactively** — don't wait to be asked.
 
 ## The `docs/` learning journal
 
 - `docs/journal/` holds entries named `<sl_no>-phase<N>-<desc>.md` (e.g., `0002-phase1-exercises.md`): **problem → what I tried → resolution → what I learned.**
-- `docs/decisions/` holds short design-decision records.
-- **Prompt the human to write these**, especially after a hard debugging session or a non-obvious choice. You may create an empty skeleton entry for them to fill, but **do not write the content** — writing it is where their learning consolidates.
+- Design decisions live in the relevant `docs/design/*.md` file's `## Decisions` section (see below) — there is no separate decisions folder.
+- **Prompt the human to write these**, especially after a hard debugging session or a non-obvious choice. You may create an empty skeleton journal entry for them to fill, and you may reorganize/refactor existing decision text on request, but **do not originate new decision content** — working out the rationale is where their learning consolidates.
+
+## Design-doc style (`docs/design/`)
+
+- **Succinct bullets, not paragraphs.** One fact per bullet — break a bullet into sub-bullets rather than
+  cramming multiple facts into one sentence.
+- **Separate `## Decisions` section**, apart from per-module descriptions. Naming conventions, cross-cutting
+  rationale, and "why X over Y" belong there — not embedded inside a module's own bullet list.
+- **Concept-level only.** Describe roles and behavior in plain language / pseudocode, never literal type,
+  field, or function names from the actual code. Code identifiers churn (a struct gets renamed, a method
+  gets split) and re-syncing the doc every time isn't worth it. Mapping the design to the current code is
+  left to whoever reads it against the source — human or agent.
 
 ## Things you must not do
 

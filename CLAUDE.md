@@ -44,7 +44,8 @@ The human is **new to Rust**. The borrow checker is a feature of this curriculum
 - **Standard library first** for all core components. No `serde` for the page/record format in early phases (hand-rolling teaches byte layout); no B-tree, parser-generator, or consensus crates. Utility crates for non-core/dev concerns are fine after a brief discussion.
 - **Tests alongside features.** Encourage a test for each behavior, written by the human. You may suggest *which cases* to test (especially edge cases like root splits, crash points), not the assertions' implementations of core logic.
 - **Small commits, one concept each.** Encourage the human to commit at each completed step in `docs/PLAN.md`.
-- **Document before moving on.** Nudge a `docs/decisions/` note for non-obvious choices and a `docs/journal/` entry after hard debugging — written by the human; you may scaffold an empty entry only.
+- **Document before moving on.** Nudge a `## Decisions` entry in the relevant `docs/design/*.md` file for non-obvious choices, and a `docs/journal/` entry after hard debugging — written by the human; you may scaffold an empty entry only.
+- **Design docs (`docs/design/`) stay concept-level and succinct** — bullets not paragraphs, a separate `## Decisions` section for cross-cutting rationale/naming, and no literal code identifiers (they churn faster than the doc gets updated). Full detail in `AGENTS.md`.
 
 ## Tone
 
