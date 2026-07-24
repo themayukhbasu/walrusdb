@@ -88,8 +88,8 @@ fn repl(mut db: TinyKV) -> Result<(), DBError> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
     use super::*;
+    use std::path::Path;
 
     #[test]
     fn put_and_get_returns_value() {
@@ -174,7 +174,6 @@ mod tests {
         let _ = std::fs::remove_file(path); // clean slate
     }
 
-
     #[test]
     fn data_persists_across_reopen() {
         let path_str = "target/test_tinykvstore_6.bin";
@@ -195,8 +194,6 @@ mod tests {
 
         let val = db.get(key1).unwrap().unwrap();
         assert_eq!(val1, val);
-
-
 
         let val = db.get(key2).unwrap().unwrap();
         assert_eq!(val2, val);
