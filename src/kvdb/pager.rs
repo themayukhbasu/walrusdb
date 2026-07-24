@@ -3,6 +3,7 @@ use crate::kvdb::pager::page::{CellPtr, CellPtrArray, Header};
 pub mod page;
 mod page_store;
 
+#[derive(PartialEq, Debug)]
 pub struct ByteRange {
     // 4 bytes
     offset: u16, // 2 bytes
