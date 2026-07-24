@@ -170,4 +170,95 @@ mod tests {
 
         assert_eq!(page, Page::decode(page.encode()));
     }
+
+    #[test]
+    fn one_live_cell_page_encode_decode_round_trip_matches() {
+        let header = Header {
+            page_id: 1,
+            live_count: 1,
+            ptr_array_loc: ByteRange {
+                offset: HEADER_SIZE as u16,
+                len: CELL_POINTER_SIZE as u16,
+            },
+        };
+
+        let cell_ptr = CellPtr {
+            cell_loc: ByteRange {
+                offset: 400,
+                len: 200,
+            },
+            key_loc: ByteRange {
+                offset: 400,
+                len: 20,
+            },
+        };
+
+        let cell_ptr_array = CellPtrArray {
+            pointers: vec![cell_ptr],
+        };
+
+        let bytes =
+            vec![
+                0u8;
+                PAGE_SIZE - HEADER_SIZE - (cell_ptr_array.pointers.len() * CELL_POINTER_SIZE)
+            ];
+        let page = Page {
+            header,
+            ptr_array: cell_ptr_array,
+            bytes,
+        };
+
+        assert_eq!(page, Page::decode(page.encode()));
+    }
+
+    #[test]
+    fn two_live_cell_page_encode_decode_round_trip_matches() {
+        let header = Header {
+            page_id: 2,
+            live_count: 2,
+            ptr_array_loc: ByteRange {
+                offset: HEADER_SIZE as u16,
+                len: 2 * CELL_POINTER_SIZE as u16,
+            },
+        };
+
+        let cell_ptr1 = CellPtr {
+            cell_loc: ByteRange {
+                offset: 400,
+                len: 200,
+            },
+            key_loc: ByteRange {
+                offset: 400,
+                len: 20,
+            },
+        };
+
+        let cell_ptr2 = CellPtr {
+            cell_loc: ByteRange {
+                offset: 600,
+                len: 150,
+            },
+            key_loc: ByteRange {
+                offset: 600,
+                len: 25,
+            },
+        };
+
+        let cell_ptr_array = CellPtrArray {
+            pointers: vec![cell_ptr1, cell_ptr2],
+        };
+
+        let bytes =
+            vec![
+                0u8;
+                PAGE_SIZE - HEADER_SIZE - (cell_ptr_array.pointers.len() * CELL_POINTER_SIZE)
+            ];
+        let page = Page {
+            header,
+            ptr_array: cell_ptr_array,
+            bytes,
+        };
+
+        assert_eq!(page, Page::decode(page.encode()));
+    }
 }
