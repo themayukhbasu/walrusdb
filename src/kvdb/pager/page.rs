@@ -14,7 +14,7 @@ pub struct Page {
 #[derive(PartialEq, Debug)]
 pub struct Header {
     // 8 bytes
-    page_id: u16,             // 2 bytes
+    page_num: u16,             // 2 bytes
     live_count: u16,          // 2 bytes
     ptr_array_loc: ByteRange, // 4 bytes
 }
@@ -32,8 +32,8 @@ pub struct CellPtr {
 }
 
 impl Page {
-    pub fn id(&self) -> u16 {
-        self.header.page_id
+    pub fn page_num(&self) -> u16 {
+        self.header.page_num
     }
 
     pub fn encode(&self) -> [u8; PAGE_SIZE] {
@@ -78,7 +78,7 @@ impl Header {
     fn encode(&self) -> [u8; HEADER_SIZE] {
         let mut buf = [0u8; HEADER_SIZE];
 
-        buf[0..2].copy_from_slice(&self.page_id.to_le_bytes());
+        buf[0..2].copy_from_slice(&self.page_num.to_le_bytes());
         buf[2..4].copy_from_slice(&self.live_count.to_le_bytes());
         buf[4..8].copy_from_slice(&self.ptr_array_loc.encode());
 
@@ -86,11 +86,11 @@ impl Header {
     }
 
     fn decode(buf: &[u8; HEADER_SIZE]) -> Self {
-        let page_id = u16::from_le_bytes(buf[0..2].try_into().expect("fixed size"));
+        let page_num = u16::from_le_bytes(buf[0..2].try_into().expect("fixed size"));
         let live_count = u16::from_le_bytes(buf[2..4].try_into().expect("fixed size"));
         let ptr_array_loc = ByteRange::decode(buf[4..8].try_into().expect("fixed size"));
         Self {
-            page_id,
+            page_num,
             live_count,
             ptr_array_loc,
         }
@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn empty_page_encode_decode_round_trip_matches() {
         let header = Header {
-            page_id: 1,
+            page_num: 1,
             live_count: 0,
             ptr_array_loc: ByteRange {
                 offset: HEADER_SIZE as u16,
@@ -174,7 +174,7 @@ mod tests {
     #[test]
     fn one_live_cell_page_encode_decode_round_trip_matches() {
         let header = Header {
-            page_id: 1,
+            page_num: 1,
             live_count: 1,
             ptr_array_loc: ByteRange {
                 offset: HEADER_SIZE as u16,
@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn two_live_cell_page_encode_decode_round_trip_matches() {
         let header = Header {
-            page_id: 2,
+            page_num: 2,
             live_count: 2,
             ptr_array_loc: ByteRange {
                 offset: HEADER_SIZE as u16,

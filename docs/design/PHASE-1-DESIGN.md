@@ -77,6 +77,8 @@ fragmentation — accepted, not fixed, for now).
 
 Manages pages.
 
+- read page
+- write page
 - page-id validation, page count/size, page compaction, version management
 - manages the free list via the FreeList module
 - pointer-array management

@@ -61,7 +61,7 @@ A page is `PAGE_SIZE` bytes (4096 is conventional; you can choose). Those bytes 
 - **Header** — fixed-size, at the start of every page. Contains metadata about what's on this page.
 - **Record area** — the rest of the page, where actual key/value pairs live.
 
-You need to decide — and document in `docs/decisions/` — what goes in the header. At minimum the header needs to tell a
+You need to decide — and document in `docs/design/*.md` — what goes in the header. At minimum the header needs to tell a
 reader how many records are on this page. Think about what else might be useful.
 
 **Format version & checksum:** consider tagging the page/file format with a version
@@ -151,7 +151,7 @@ different responsibilities.
 
 ## Decisions to document before coding
 
-Create `docs/decisions/` and write a short note for each:
+Create `docs/design/*.md` and write a short note for each:
 
 1. **Page size** — Why 4096 (or whatever you pick)?
 2. **Page header contents** — What fields, how many bytes each, why?
