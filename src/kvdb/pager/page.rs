@@ -47,7 +47,11 @@ impl Page {
     pub fn new(page_num: u16) -> Self {
         let header = Header::new(page_num);
 
-        todo!()
+        Self {
+            header: Header::new(page_num),
+            ptr_array: CellPtrArray::new(),
+            bytes: vec![0u8; PAGE_SIZE - HEADER_SIZE],
+        }
     }
 
     pub fn encode(&self) -> [u8; PAGE_SIZE] {
@@ -151,6 +155,9 @@ impl Header {
 }
 
 impl CellPtrArray {
+    fn new() -> Self {
+        Self { pointers: vec![] }
+    }
     fn encode(&self) -> Vec<u8> {
         let mut buf: Vec<u8> = Vec::new();
 
@@ -202,24 +209,25 @@ mod tests {
 
     #[test]
     fn empty_page_encode_decode_round_trip_matches() {
-        let header = Header {
-            page_num: 1,
-            live_count: 0,
-            ptr_array_loc: ByteRange {
-                offset: HEADER_SIZE as u16,
-                len: 0,
-            },
-        };
-
-        let cell_ptr_array = CellPtrArray { pointers: vec![] };
-
-        let bytes = [0u8; PAGE_SIZE - HEADER_SIZE].to_vec();
-
-        let page = Page {
-            header,
-            ptr_array: cell_ptr_array,
-            bytes,
-        };
+        // let header = Header {
+        //     page_num: 1,
+        //     live_count: 0,
+        //     ptr_array_loc: ByteRange {
+        //         offset: HEADER_SIZE as u16,
+        //         len: 0,
+        //     },
+        // };
+        //
+        // let cell_ptr_array = CellPtrArray { pointers: vec![] };
+        //
+        // let bytes = [0u8; PAGE_SIZE - HEADER_SIZE].to_vec();
+        //
+        // let page = Page {
+        //     header,
+        //     ptr_array: cell_ptr_array,
+        //     bytes,
+        // };
+        let page = Page::new(1);
 
         assert_eq!(page, Page::decode(page.encode()));
     }
