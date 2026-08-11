@@ -14,7 +14,7 @@ pub struct Page {
 #[derive(PartialEq, Debug)]
 pub struct Header {
     // 8 bytes
-    page_num: u16,             // 2 bytes
+    page_num: u16,            // 2 bytes
     live_count: u16,          // 2 bytes
     ptr_array_loc: ByteRange, // 4 bytes
 }
@@ -24,7 +24,7 @@ pub struct CellPtrArray {
     pointers: Vec<CellPtr>,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub struct CellPtr {
     // 8 bytes
     cell_loc: ByteRange, // 4 bytes
@@ -34,6 +34,20 @@ pub struct CellPtr {
 impl Page {
     pub fn page_num(&self) -> u16 {
         self.header.page_num
+    }
+
+    pub fn ptr_array(&self) -> &CellPtrArray {
+        &self.ptr_array
+    }
+
+    pub fn bytes(&self) -> &Vec<u8> {
+        &self.bytes
+    }
+
+    pub fn new(page_num: u16) -> Self {
+        let header = Header::new(page_num);
+
+        todo!()
     }
 
     pub fn encode(&self) -> [u8; PAGE_SIZE] {
@@ -72,9 +86,48 @@ impl Page {
             bytes,
         }
     }
+
+    fn get_key_bytes(&self, cell_ptr: &CellPtr) -> &[u8] {
+        let key_loc_start = (cell_ptr.key_loc.offset
+            - (self.header.ptr_array_loc.offset + self.header.ptr_array_loc.len))
+            as usize;
+        let key_loc_end = key_loc_start + cell_ptr.key_loc.len as usize;
+        let key_bytes = &self.bytes[key_loc_start..key_loc_end];
+        key_bytes
+    }
+    fn binary_search(&self, target: &[u8]) -> Option<CellPtr> {
+        let mut low = 0;
+        let mut high = self.ptr_array.pointers.len();
+
+        while low < high {
+            let mid = (low + (high - low)) / 2;
+            let mid_byte = self.get_key_bytes(&self.ptr_array.pointers[mid]);
+            if target > mid_byte {
+                low = mid + 1;
+            } else if target < mid_byte {
+                high = mid;
+            } else {
+                return Some(self.ptr_array.pointers[mid]);
+            }
+        }
+        None
+    }
+    pub fn lookup_key_cell_pointer(&self, target: &[u8]) -> Option<CellPtr> {
+        self.binary_search(target)
+    }
 }
 
 impl Header {
+    fn new(page_num: u16) -> Header {
+        Self {
+            page_num,
+            live_count: 0,
+            ptr_array_loc: ByteRange {
+                offset: HEADER_SIZE as u16,
+                len: 0,
+            },
+        }
+    }
     fn encode(&self) -> [u8; HEADER_SIZE] {
         let mut buf = [0u8; HEADER_SIZE];
 
@@ -112,7 +165,7 @@ impl CellPtrArray {
 
     fn decode(ptr_array_bytes: Vec<u8>) -> Self {
         let mut pointers: Vec<CellPtr> = Vec::new();
-        let num_ptrs = (ptr_array_bytes.len() / CELL_POINTER_SIZE); // todo(raise error if invalid)
+        let num_ptrs = ptr_array_bytes.len() / CELL_POINTER_SIZE; // todo(raise error if invalid)
         for i in 0..num_ptrs {
             let start = i * CELL_POINTER_SIZE;
             let end = start + CELL_POINTER_SIZE;

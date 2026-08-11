@@ -5,7 +5,7 @@ use crate::kvdb::pager::page_store::PageStore;
 pub mod page;
 mod page_store;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub struct ByteRange {
     // 4 bytes
     offset: u16, // 2 bytes
@@ -56,5 +56,11 @@ impl Pager {
 
         self.store.write(page_offset, page_buffer)?;
         Ok(())
+    }
+
+    fn lookup_key_pos(page :Page, key_bytes: Vec<u8>) -> Option<CellPtr> {
+
+
+        todo!()
     }
 }
