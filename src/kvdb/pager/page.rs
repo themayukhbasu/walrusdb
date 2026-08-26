@@ -1,3 +1,4 @@
+use std::io::Read;
 use crate::kvdb::pager::ByteRange;
 
 pub const PAGE_SIZE: usize = 4096;
@@ -98,6 +99,15 @@ impl Page {
         let key_loc_end = key_loc_start + cell_ptr.key_loc.len as usize;
         let key_bytes = &self.bytes[key_loc_start..key_loc_end];
         key_bytes
+    }
+    
+    pub fn get_cell_bytes(&self, cell_ptr: &CellPtr) -> Vec<u8> {
+        let cell_loc_start = (cell_ptr.cell_loc.offset
+            - (self.header.ptr_array_loc.offset + self.header.ptr_array_loc.len))
+            as usize;
+        let cell_loc_end = cell_loc_start + cell_ptr.key_loc.len as usize;
+        let cell_bytes = &self.bytes[cell_loc_start..cell_loc_end];
+        cell_bytes.to_vec()
     }
     fn binary_search(&self, target: &[u8]) -> Option<CellPtr> {
         let mut low = 0;
