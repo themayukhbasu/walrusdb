@@ -6,6 +6,7 @@ pub enum DBError {
     Io(std::io::Error),
     InvalidPageNumber(u16, String),
     InvalidFreeSpace(u16, String),
+    AvailabilityListOverflow(usize, usize, String),
 }
 
 impl From<std::io::Error> for DBError {
@@ -23,6 +24,13 @@ impl fmt::Display for DBError {
             }
             DBError::InvalidFreeSpace(free_space, msg) => {
                 write!(f, "DBError: Invalide Free Space: {} | {}", free_space, msg)
+            }
+            DBError::AvailabilityListOverflow(al_size, total_size, msg) => {
+                write!(
+                    f,
+                    "DBError: Availability List greater than max allowed: {}/{} | {}",
+                    al_size, total_size, msg
+                )
             }
         }
     }

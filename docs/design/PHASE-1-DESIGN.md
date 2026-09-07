@@ -107,6 +107,10 @@ Manages records; doesn't know about pages.
 
 - init db, REPL
 
+## Open Validation / Error-Handling TODOs
+
+- **Cell Pointer Validations** - check the validity of cell pointer in `page.rs` and `freelist_manager.rs` and other possible places.
+
 ## Decisions
 
 - **Naming**: byte ranges are always described as an offset + a length, never start/end — applies to a
