@@ -1,3 +1,5 @@
+mod best_fit;
+
 use crate::kvdb::errors::DBError;
 use crate::kvdb::pager::ByteRange;
 use crate::kvdb::pager::page::{PAGE_SIZE, Page};
@@ -6,9 +8,10 @@ use std::collections::HashMap;
 const FREE_LIST_REGION_SIZE: usize = PAGE_SIZE / 4;
 const MAX_PAGES: usize = FREE_LIST_REGION_SIZE / size_of::<u16>();
 
+#[derive(Debug, PartialEq)]
 struct FreeListPage {
     // free list
-    // a map ->  { page_num : total free space}
+    // array ->  [ total free space ] | index is the page number
     free_list: FreeList,
 
     // availability list
@@ -29,39 +32,88 @@ struct AvailabilityList {
     availability_list: HashMap<u16, Vec<ByteRange>>,
 }
 
-struct FreeListManager {
+pub struct FreeListManager {
     free_list_page: FreeListPage,
 }
 
+impl FreeListManager {
+    pub fn load(free_list_page_bytes: [u8; PAGE_SIZE]) -> Result<Self, DBError> {
+        let free_list_page = FreeListPage::decode(free_list_page_bytes)?;
+
+        Ok(Self { free_list_page })
+    }
+
+    pub fn flush(&self) -> Result<[u8; PAGE_SIZE], DBError> {
+        let buf = self.free_list_page.encode()?;
+        Ok(buf)
+    }
+}
+
 impl FreeListPage {
-    fn new(&self) {}
+    fn new() -> Self {
+        let new_free_list = FreeList {
+            free_list: [0u16; MAX_PAGES],
+        };
+        let new_availability_list = AvailabilityList {
+            availability_list: HashMap::new(),
+        };
+        Self {
+            free_list: new_free_list,
+            availability_list: new_availability_list,
+        }
+    }
 
-    fn encode(&self) {}
+    fn encode(&self) -> Result<[u8; PAGE_SIZE], DBError> {
+        let free_list_bytes = self.free_list.encode()?;
+        let availability_list_bytes = self.availability_list.encode()?;
+        let mut buf = [0u8; PAGE_SIZE];
+        buf[0..FREE_LIST_REGION_SIZE].copy_from_slice(&free_list_bytes);
+        buf[FREE_LIST_REGION_SIZE..PAGE_SIZE].copy_from_slice(&availability_list_bytes);
+        Ok(buf)
+    }
 
-    fn decode(buf: [u8; PAGE_SIZE]) {}
+    fn decode(buf: [u8; PAGE_SIZE]) -> Result<Self, DBError> {
+        let free_list = FreeList::decode(
+            buf[0..FREE_LIST_REGION_SIZE]
+                .try_into()
+                .expect("fixed size"),
+        )?;
+        let availability_list = AvailabilityList::decode(
+            buf[FREE_LIST_REGION_SIZE..PAGE_SIZE]
+                .try_into()
+                .expect("fixed size"),
+        );
+
+        Ok(Self {
+            free_list,
+            availability_list,
+        })
+    }
 }
 
 impl FreeList {
     fn encode(&self) -> Result<[u8; FREE_LIST_REGION_SIZE], DBError> {
         let mut buf = [0u8; FREE_LIST_REGION_SIZE];
-        for i in 0..MAX_PAGES {
-            if self.free_list[i] > PAGE_SIZE as u16 {
+        for page_num in 1..MAX_PAGES {
+            // index 0 is for page 0 which is free list page
+            if self.free_list[page_num] > PAGE_SIZE as u16 {
                 return Err(DBError::InvalidFreeSpace(
-                    self.free_list[i],
+                    self.free_list[page_num],
                     String::from("free space cannot be greater than page size"),
                 ));
             }
-            let start_idx = i * size_of::<u16>();
+            let start_idx = page_num * size_of::<u16>();
             buf[start_idx..start_idx + size_of::<u16>()]
-                .copy_from_slice(&self.free_list[i].to_le_bytes());
+                .copy_from_slice(&self.free_list[page_num].to_le_bytes());
         }
         Ok(buf)
     }
 
     fn decode(buf: [u8; FREE_LIST_REGION_SIZE]) -> Result<Self, DBError> {
         let mut free_list: [u16; MAX_PAGES] = [0u16; MAX_PAGES];
-        for i in 0..MAX_PAGES {
-            let start_idx = i * size_of::<u16>();
+        for page_num in 1..MAX_PAGES {
+            // index 0 is for page 0 which is free list page
+            let start_idx = page_num * size_of::<u16>();
             let free_space = u16::from_le_bytes(
                 buf[start_idx..start_idx + size_of::<u16>()]
                     .try_into()
@@ -73,7 +125,7 @@ impl FreeList {
                     String::from("free space cannot be greater than page size"),
                 ));
             }
-            free_list[i] = free_space;
+            free_list[page_num] = free_space;
         }
         Ok(Self { free_list })
     }
@@ -130,8 +182,12 @@ mod tests {
         let all_zero_free_list = FreeList {
             free_list: [0u16; MAX_PAGES],
         };
-        let full_space_free_list = FreeList {
-            free_list: [PAGE_SIZE as u16; MAX_PAGES],
+        let mut full_space_free_list = FreeList {
+            free_list: {
+                let mut fl = [PAGE_SIZE as u16; MAX_PAGES];
+                fl[0] = 0;
+                fl
+            },
         };
 
         assert_eq!(
@@ -153,7 +209,7 @@ mod tests {
         assert!(invalid_space_free_list.encode().is_err());
 
         let mut buf = [0u8; FREE_LIST_REGION_SIZE];
-        buf[0..size_of::<u16>()].copy_from_slice(&u16::MAX.to_le_bytes());
+        buf[size_of::<u16>()..2 * size_of::<u16>()].copy_from_slice(&u16::MAX.to_le_bytes());
         assert!(FreeList::decode(buf).is_err());
     }
 
@@ -189,5 +245,49 @@ mod tests {
             overflow_al.encode(),
             Err(DBError::AvailabilityListOverflow(_, _, _))
         ));
+    }
+
+    #[test]
+    fn free_list_page_round_trip_matches() {
+        let free_list = FreeList {
+            free_list: {
+                let mut fl = [0u16; MAX_PAGES];
+                fl[1] = 100;
+                fl[2] = 4096;
+                fl[MAX_PAGES - 1] = 50; // last slot - checks the far edge of the region too
+                fl
+            },
+        };
+
+        let mut availability_map = HashMap::new();
+        availability_map.insert(
+            1,
+            vec![ByteRange {
+                offset: 20,
+                len: 80,
+            }],
+        );
+        availability_map.insert(
+            2,
+            vec![
+                ByteRange {
+                    offset: 100,
+                    len: 200,
+                },
+                ByteRange {
+                    offset: 4000,
+                    len: 96,
+                },
+            ],
+        );
+        let availability_list = AvailabilityList {
+            availability_list: availability_map,
+        };
+        let page = FreeListPage {
+            free_list,
+            availability_list,
+        };
+
+        assert_eq!(page, FreeListPage::decode(page.encode().unwrap()).unwrap());
     }
 }

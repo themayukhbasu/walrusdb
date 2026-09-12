@@ -1,4 +1,5 @@
 use crate::kvdb::errors::DBError;
+use crate::kvdb::pager::freelist_manager::FreeListManager;
 use crate::kvdb::pager::page::{CellPtr, CellPtrArray, Header, PAGE_SIZE, Page};
 use crate::kvdb::pager::page_store::PageStore;
 
@@ -40,9 +41,25 @@ pub fn test() -> String {
 
 struct Pager {
     store: PageStore,
+    free_list_manager: FreeListManager,
 }
 
 impl Pager {
+    fn load_free_list(&mut self) -> Result<(), DBError> {
+        let offset = 0;
+        let mut free_list_page_bytes = [0u8; PAGE_SIZE];
+        self.store.read(offset, &mut free_list_page_bytes)?;
+        self.free_list_manager = FreeListManager::load(free_list_page_bytes)?;
+        Ok(())
+    }
+
+    fn flush_free_list(&mut self) -> Result<(), DBError> {
+        let offset = 0;
+        let page_buffer = self.free_list_manager.flush()?;
+
+        self.store.write(offset, page_buffer)?;
+        Ok(())
+    }
     fn new_page(&mut self) -> Result<(), DBError> {
         let page_offset = self.store.allocate()?;
         let page_num = (page_offset / PAGE_SIZE as u64) as u16;

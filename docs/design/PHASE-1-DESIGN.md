@@ -2,7 +2,7 @@
 
 ## Layering
 
-KVDB + Record → Pager → Page → PageStore
+KVDB + Record -> Pager -> Page -> PageStore
 
 - **PageStore**: dumb I/O, byte offsets only, never interprets.
 - **Page**: pure layout model — header / pointer array / cells. No decode, no compare.
@@ -64,7 +64,7 @@ fragmentation — accepted, not fixed, for now).
     2. that page's availability list for one cell big enough (aggregate ≥ N doesn't guarantee a single free
        cell ≥ N — classic fragmentation). If no single cell fits, compact that page before falling back to a
        fresh page.
-- capabilities: best-fit lookup (size → page + slot if found), a "fits after compaction" check, update, load
+- capabilities: best-fit lookup (size -> page + slot if found), a "fits after compaction" check, update, load
 - **open questions**
     - best-fit when free space is spread across several slots that individually don't fit but sum to enough —
       do we split slots? what does the return value mean then?
@@ -72,6 +72,20 @@ fragmentation — accepted, not fixed, for now).
     - keep the free list totals consistent with the availability list on every mutating op (split/coalesce
       must not change a page's aggregate total; only insert/delete should)
     - whether the availability list needs to live on more than page 0 past toy scale
+- **Best-fit lookup algorithm** (candidate-based):
+    1. **Candidate selection (free list scan)**:
+        - filter pages where `aggregate_free >= requested_size`
+        - rank survivors ascending by `aggregate_free - requested_size` (closest fit first)
+        - take the top `n` (fixed constant) as candidates
+        - fewer than `n` pages may qualify — candidate list is not fixed-size
+    2. **Slot selection (availability list scan)**:
+        - for each candidate page, in rank order, scan its availability-list entries
+        - pick the smallest single cell that still satisfies `cell_size >= requested_size`
+        - first candidate with a satisfying cell wins -> return `Found`
+    3. **Outcomes**:
+        - a candidate has a fitting cell -> `Found(page_num, slot)`
+        - candidates exist but none has a single fitting cell (fragmentation) -> `NeedsCompaction(candidates)`
+        - no page satisfies step 1 at all -> `NoSpace`
 
 ### Pager
 
@@ -87,7 +101,7 @@ Manages pages.
     - uses each entry's key offset/length to slice raw key bytes directly out of the page
     - compares raw bytes directly (byte-lexicographic `Ord`, free in Rust) — no record decoding, no strings
 - **next-empty-slot lookup** for a size:
-    - best-fit → if it only fits after compaction, compact then return the slot → else allocate a fresh page
+    - best-fit -> if it only fits after compaction, compact then return the slot -> else allocate a fresh page
     - helper scans: an empty-slot scan, a free-list scan
 
 ### Record
@@ -109,7 +123,8 @@ Manages records; doesn't know about pages.
 
 ## Open Validation / Error-Handling TODOs
 
-- **Cell Pointer Validations** - check the validity of cell pointer in `page.rs` and `freelist_manager.rs` and other possible places.
+- **Cell Pointer Validations** - check the validity of cell pointer in `page.rs` and `freelist_manager.rs` and other
+  possible places.
 
 ## Decisions
 
@@ -144,3 +159,7 @@ Manages records; doesn't know about pages.
       7th page in the file.
     - page_id can be used in a later phase when the positional information of the page is separate from the identifier.
       i.e. page_id = 7 doesn't necessarily need to be the 7th page in the file.
+- **Best-fit lookup is candidate-based, not first-fit**: free-list scan ranks the top `n` pages by closeness of fit
+  rather than stopping at the first page that qualifies. Costs a small ranking pass; buys the ability to later tune `n`
+  or bias candidate selection based on fragmentation level - giving control over compaction pacing without changing the
+  lookup's shape.
