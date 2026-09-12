@@ -1,6 +1,6 @@
+use crate::errors::DBError;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
-use crate::errors::DBError;
 
 pub const BLOCK_SIZE: usize = 64;
 

@@ -1,4 +1,6 @@
-fn main() {loop_test()}
+fn main() {
+    loop_test()
+}
 fn loop_test() {
     let x: u64 = 5;
     for i in 0..x {

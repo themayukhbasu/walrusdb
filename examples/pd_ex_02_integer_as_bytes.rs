@@ -1,13 +1,13 @@
 use core::result::Result::Ok;
-use std::io::{self, Write, Read};
-use std::path::Path;
 use std::fs::File;
+use std::io::{self, Read, Write};
+use std::path::Path;
 
 const FILES_DIR: &str = "./target/Files/";
 #[derive(Debug)]
 enum DBError {
     IO(std::io::Error),
-    FileAlreadyExists
+    FileAlreadyExists,
 }
 
 impl From<std::io::Error> for DBError {
@@ -15,12 +15,14 @@ impl From<std::io::Error> for DBError {
         DBError::IO(e)
     }
 }
-fn main(){
+fn main() {
     let mut file_name = String::new();
     println!("Enter the file to be created: ");
-    io::stdin().read_line(&mut file_name).expect("Failed to read line");
+    io::stdin()
+        .read_line(&mut file_name)
+        .expect("Failed to read line");
     let _file_name = file_name.trim();
-    match create_file(_file_name){
+    match create_file(_file_name) {
         Ok(_) => println!("File created successfully"),
         Err(e) => match e {
             DBError::IO(io_err) => println!("I/O error occurred: {}", io_err),
@@ -30,27 +32,37 @@ fn main(){
 
     let mut input = String::new();
     read_input(&mut input, "first".to_string());
-    let _first_input = input.trim().parse::<u16>().expect("Please enter a valid integer");
+    let _first_input = input
+        .trim()
+        .parse::<u16>()
+        .expect("Please enter a valid integer");
     read_input(&mut input, "second".to_string());
-    let _second_input = input.trim().parse::<u32>().expect("Please enter a valid integer");
+    let _second_input = input
+        .trim()
+        .parse::<u32>()
+        .expect("Please enter a valid integer");
     read_input(&mut input, "third".to_string());
-    let _third_input = input.trim().parse::<u8>().expect("Please enter a valid integer");
+    let _third_input = input
+        .trim()
+        .parse::<u8>()
+        .expect("Please enter a valid integer");
     let mut buffer = encode_into_buffer(_first_input, _second_input, _third_input);
     write_to_file(_file_name, &buffer).expect("Failed to write to file");
-    buffer = [0u8;8];
+    buffer = [0u8; 8];
     read_to_file(_file_name, &mut buffer).expect("Failed to read from file");
     println!("Read data from file: {:?}", buffer);
     let (_first_input, _second_input, _third_input) = decode_from_buffer(&buffer);
-    println!("Read integers from file: {}, {}, {}", _first_input, _second_input, _third_input);
+    println!(
+        "Read integers from file: {}, {}, {}",
+        _first_input, _second_input, _third_input
+    );
 }
 
 fn create_file(file_name: &str) -> Result<(), DBError> {
     let path = Path::new(FILES_DIR).join(file_name);
     if !path.exists() {
         match File::create(&path) {
-            Ok(_) => {
-                Ok(())
-            }
+            Ok(_) => Ok(()),
             Err(e) => Err(DBError::IO(e)),
         }
     } else {
@@ -59,22 +71,22 @@ fn create_file(file_name: &str) -> Result<(), DBError> {
 }
 
 fn encode_into_buffer(first: u16, second: u32, third: u8) -> [u8; 8] {
-        let mut buffer = [0u8; 8];
+    let mut buffer = [0u8; 8];
 
-        buffer[0..2].copy_from_slice(&first.to_le_bytes());
-        buffer[2..6].copy_from_slice(&second.to_le_bytes());
-        buffer[6] = third;
+    buffer[0..2].copy_from_slice(&first.to_le_bytes());
+    buffer[2..6].copy_from_slice(&second.to_le_bytes());
+    buffer[6] = third;
 
-        buffer
-    }
+    buffer
+}
 
-    fn decode_from_buffer(buffer: &[u8; 8]) -> (u16, u32, u8) {
-        let first = u16::from_le_bytes(buffer[0..2].try_into().unwrap());
-        let second = u32::from_le_bytes(buffer[2..6].try_into().unwrap());
-        let third = buffer[6];
+fn decode_from_buffer(buffer: &[u8; 8]) -> (u16, u32, u8) {
+    let first = u16::from_le_bytes(buffer[0..2].try_into().unwrap());
+    let second = u32::from_le_bytes(buffer[2..6].try_into().unwrap());
+    let third = buffer[6];
 
-        (first, second, third)
-    }
+    (first, second, third)
+}
 
 fn read_input(input: &mut String, count: String) {
     input.clear();
@@ -84,18 +96,14 @@ fn read_input(input: &mut String, count: String) {
 
 fn write_to_file(file_path: &str, buffer: &[u8]) -> Result<(), DBError> {
     let path = Path::new(FILES_DIR).join(file_path);
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .open(&path)?;
+    let mut file = std::fs::OpenOptions::new().write(true).open(&path)?;
     file.write_all(buffer)?;
     Ok(())
 }
 
 fn read_to_file(file_path: &str, buffer: &mut [u8]) -> Result<(), DBError> {
     let path = Path::new(FILES_DIR).join(file_path);
-    let mut file = std::fs::OpenOptions::new()
-        .read(true)
-        .open(&path)?;
+    let mut file = std::fs::OpenOptions::new().read(true).open(&path)?;
     file.read_exact(buffer)?;
     Ok(())
 }
@@ -165,4 +173,3 @@ mod tests {
         assert_eq!(&buffer[2..6], &[0xA0, 0x86, 0x01, 0x00]);
     }
 }
-

@@ -1,5 +1,5 @@
-use std::io::{Seek, SeekFrom, Read, Write};
-use std::fs::{OpenOptions};
+use std::fs::OpenOptions;
+use std::io::{Read, Seek, SeekFrom, Write};
 
 const FILES_DIR: &str = "./target/Files/block_store.bin";
 const BLOCK_SIZE: usize = 64;
@@ -31,26 +31,25 @@ impl std::fmt::Display for DBError {
     }
 }
 
-
 impl BlockStore {
-    fn open(path: &str) -> Result<Self, DBError>{
+    fn open(path: &str) -> Result<Self, DBError> {
         let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .open(path)
             .map_err(|e| DBError::IO(e))?;
-        return Ok(BlockStore { file })
+        return Ok(BlockStore { file });
     }
 
-    fn num_of_blocks(&mut self) -> Result<u64, DBError>{
+    fn num_of_blocks(&mut self) -> Result<u64, DBError> {
         let current_cursor = self.file.stream_position()?;
         let size = self.file.seek(SeekFrom::End(0))?;
         self.file.seek(SeekFrom::Start(current_cursor))?;
         Ok(size / BLOCK_SIZE as u64)
     }
 
-    fn allocate_block(&mut self) -> Result<u64, DBError>{
+    fn allocate_block(&mut self) -> Result<u64, DBError> {
         let block_num = self.num_of_blocks()?;
         self.file.seek(SeekFrom::End(0))?;
         let zero_block = [0u8; BLOCK_SIZE];
@@ -58,13 +57,13 @@ impl BlockStore {
         Ok(block_num)
     }
 
-    fn write_block(&mut self, block_num: u64, data: &[u8; BLOCK_SIZE]) -> Result<(), DBError>{
+    fn write_block(&mut self, block_num: u64, data: &[u8; BLOCK_SIZE]) -> Result<(), DBError> {
         if block_num >= self.num_of_blocks()? {
             return Err(DBError::BlockOutOfBounds(block_num));
         }
 
         let offset = block_num * BLOCK_SIZE as u64;
-        self.file.seek(SeekFrom::Start(offset))?;   
+        self.file.seek(SeekFrom::Start(offset))?;
         self.file.write_all(data)?;
         Ok(())
     }
@@ -80,18 +79,19 @@ impl BlockStore {
         self.file.read_exact(&mut buffer)?;
         return Ok(buffer);
     }
-
-    
 }
 
 fn main() -> Result<(), DBError> {
     println!("Step 1: Open BlockStore");
-    let mut block_store =   BlockStore::open(FILES_DIR)?;
+    let mut block_store = BlockStore::open(FILES_DIR)?;
     let first_block = block_store.allocate_block()?;
     let second_block = block_store.allocate_block()?;
     let third_block = block_store.allocate_block()?;
 
-    println!("Allocated blocks: {}, {}, {}", first_block, second_block, third_block);
+    println!(
+        "Allocated blocks: {}, {}, {}",
+        first_block, second_block, third_block
+    );
 
     read_input_from_user_and_write_to_file(&mut block_store, first_block)?;
     read_input_from_user_and_write_to_file(&mut block_store, second_block)?;
@@ -103,20 +103,33 @@ fn main() -> Result<(), DBError> {
 
     let _first_block = reopened.read_block(first_block)?;
     let _second_block = reopened.read_block(second_block)?;
-    let _third_block = reopened.read_block(third_block)?;   
-    println!("Read blocks: {:?}, {:?}, {:?}", String::from_utf8_lossy(&_first_block), String::from_utf8_lossy(&_second_block), String::from_utf8_lossy(&_third_block));
+    let _third_block = reopened.read_block(third_block)?;
+    println!(
+        "Read blocks: {:?}, {:?}, {:?}",
+        String::from_utf8_lossy(&_first_block),
+        String::from_utf8_lossy(&_second_block),
+        String::from_utf8_lossy(&_third_block)
+    );
     Ok(())
-    
 }
 
-fn read_input_from_user_and_write_to_file(block_store: &mut BlockStore, block_number: u64) -> Result<(), DBError> {
+fn read_input_from_user_and_write_to_file(
+    block_store: &mut BlockStore,
+    block_number: u64,
+) -> Result<(), DBError> {
     let mut file_input = String::new();
-     println!("Enter the file input");
-     std::io::stdin().read_line(&mut file_input).expect("Failed to read line");
-     let input_bytes = file_input.as_bytes();
-     if input_bytes.len() > BLOCK_SIZE {
+    println!("Enter the file input");
+    std::io::stdin()
+        .read_line(&mut file_input)
+        .expect("Failed to read line");
+    let input_bytes = file_input.as_bytes();
+    if input_bytes.len() > BLOCK_SIZE {
         println!("Input exceeds block size of {} bytes", BLOCK_SIZE);
-        return Err(DBError:: LengthMismatch(format!("Input length: {}, Block size: {}", input_bytes.len(), BLOCK_SIZE)));
+        return Err(DBError::LengthMismatch(format!(
+            "Input length: {}, Block size: {}",
+            input_bytes.len(),
+            BLOCK_SIZE
+        )));
     }
     let mut block_data = [0u8; BLOCK_SIZE];
     block_data[..input_bytes.len()].copy_from_slice(input_bytes);
@@ -138,7 +151,10 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        path.push(format!("block_store_new_store_has_zero_blocks_{}.bin", nanos));
+        path.push(format!(
+            "block_store_new_store_has_zero_blocks_{}.bin",
+            nanos
+        ));
         let _ = fs::remove_file(&path);
 
         let mut store = BlockStore::open(path.to_str().unwrap()).unwrap();
@@ -155,7 +171,10 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        path.push(format!("block_store_allocate_increases_block_count_{}.bin", nanos));
+        path.push(format!(
+            "block_store_allocate_increases_block_count_{}.bin",
+            nanos
+        ));
         let _ = fs::remove_file(&path);
 
         let mut store = BlockStore::open(path.to_str().unwrap()).unwrap();
@@ -176,7 +195,10 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        path.push(format!("block_store_write_and_read_block_roundtrip_{}.bin", nanos));
+        path.push(format!(
+            "block_store_write_and_read_block_roundtrip_{}.bin",
+            nanos
+        ));
         let _ = fs::remove_file(&path);
 
         let mut store = BlockStore::open(path.to_str().unwrap()).unwrap();
@@ -202,7 +224,10 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        path.push(format!("block_store_read_invalid_block_returns_err_{}.bin", nanos));
+        path.push(format!(
+            "block_store_read_invalid_block_returns_err_{}.bin",
+            nanos
+        ));
         let _ = fs::remove_file(&path);
 
         let mut store = BlockStore::open(path.to_str().unwrap()).unwrap();
@@ -221,7 +246,10 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        path.push(format!("block_store_data_persists_across_reopen_{}.bin", nanos));
+        path.push(format!(
+            "block_store_data_persists_across_reopen_{}.bin",
+            nanos
+        ));
         let _ = fs::remove_file(&path);
 
         {

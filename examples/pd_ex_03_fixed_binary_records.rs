@@ -1,13 +1,13 @@
-use std::io::{self, Seek, Read, Write};
-use std::path::Path;
-use std::fs::{File,remove_file};
 use std::fs::OpenOptions;
+use std::fs::{File, remove_file};
+use std::io::{self, Read, Seek, Write};
+use std::path::Path;
 
 const FILES_DIR: &str = "./target/Files/records.bin";
 
 #[derive(Debug)]
 enum DBError {
-    IO(std::io::Error)
+    IO(std::io::Error),
 }
 
 impl From<std::io::Error> for DBError {
@@ -17,73 +17,76 @@ impl From<std::io::Error> for DBError {
 }
 
 struct PlayerRecord {
-    score:u32,
-    level:u16,
-    active:u8
+    score: u32,
+    level: u16,
+    active: u8,
 }
 
 fn main() {
     let _first_player = PlayerRecord {
         score: 1000,
         level: 5,
-        active: 1
+        active: 1,
     };
 
     let _second_player = PlayerRecord {
         score: 2000,
         level: 10,
-        active: 0
+        active: 0,
     };
 
     let _third_player = PlayerRecord {
         score: 1500,
         level: 7,
-        active: 1
+        active: 1,
     };
 
     let _fourth_player = PlayerRecord {
         score: 3000,
         level: 15,
-        active: 1
+        active: 1,
     };
-   match create_file(FILES_DIR) {
+    match create_file(FILES_DIR) {
         Ok(_) => println!("File created successfully"),
         Err(e) => match e {
-            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err)
+            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err),
         },
     }
     let mut _buffer = encode(&_first_player);
     match write_to_file(FILES_DIR, &_buffer) {
         Ok(_) => println!("First player record written successfully"),
         Err(e) => match e {
-            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err)
+            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err),
         },
     }
     _buffer = encode(&_second_player);
-    match write_to_file(FILES_DIR, &_buffer) {  
+    match write_to_file(FILES_DIR, &_buffer) {
         Ok(_) => println!("Second player record written successfully"),
         Err(e) => match e {
-            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err)
+            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err),
         },
     }
     _buffer = encode(&_third_player);
     match write_to_file(FILES_DIR, &_buffer) {
         Ok(_) => println!("Third player record written successfully"),
         Err(e) => match e {
-            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err)
+            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err),
         },
     }
     _buffer = encode(&_fourth_player);
-    match write_to_file(FILES_DIR, &_buffer) {      
+    match write_to_file(FILES_DIR, &_buffer) {
         Ok(_) => println!("Fourth player record written successfully"),
         Err(e) => match e {
-            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err)
+            DBError::IO(io_err) => println!("I/O error occurred: {}", io_err),
         },
     }
     match read_from_file(FILES_DIR, 1) {
         Ok(record) => {
-            println!("Read record: score={}, level={}, active={}", record.score, record.level, record.active);
-        },
+            println!(
+                "Read record: score={}, level={}, active={}",
+                record.score, record.level, record.active
+            );
+        }
         Err(e) => {
             match e {
                 DBError::IO(io_err) => println!("I/O error occurred: {}", io_err),
@@ -91,11 +94,9 @@ fn main() {
             return;
         }
     };
-
-
 }
 
-fn encode(record: &PlayerRecord) -> [u8;8] {
+fn encode(record: &PlayerRecord) -> [u8; 8] {
     let mut buffer = [0u8; 8];
     buffer[0..4].copy_from_slice(&record.score.to_le_bytes());
     buffer[4..6].copy_from_slice(&record.level.to_le_bytes());
@@ -103,14 +104,14 @@ fn encode(record: &PlayerRecord) -> [u8;8] {
     return buffer;
 }
 
-fn decode(buffer: &[u8;8]) -> PlayerRecord {
+fn decode(buffer: &[u8; 8]) -> PlayerRecord {
     let score = u32::from_le_bytes(buffer[0..4].try_into().unwrap());
     let level = u16::from_le_bytes(buffer[4..6].try_into().unwrap());
     let active = buffer[6];
     PlayerRecord {
         score,
         level,
-        active
+        active,
     }
 }
 
@@ -125,20 +126,16 @@ fn create_file(file_name: &str) -> Result<(), DBError> {
     Ok(())
 }
 
-fn write_to_file(file_path: &str, buffer: &[u8;8]) -> Result<(), DBError> {
+fn write_to_file(file_path: &str, buffer: &[u8; 8]) -> Result<(), DBError> {
     let path = Path::new(file_path);
-    let mut file = OpenOptions::new()
-        .append(true)
-        .open(&path)?;
+    let mut file = OpenOptions::new().append(true).open(&path)?;
     file.write_all(buffer)?;
     Ok(())
 }
 
 fn read_from_file(file_path: &str, index: usize) -> Result<PlayerRecord, DBError> {
     let path = Path::new(file_path);
-    let mut file = OpenOptions::new()
-        .read(true)
-        .open(&path)?;
+    let mut file = OpenOptions::new().read(true).open(&path)?;
     let mut buffer = [0u8; 8];
     let offset = index * 8;
     file.seek(io::SeekFrom::Start(offset as u64))?;

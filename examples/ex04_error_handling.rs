@@ -45,17 +45,16 @@ fn read_number(path: &str) -> Result<u32, DBError> {
     file.read_exact(&mut buf)?;
     let num = u32::from_le_bytes(buf);
     if num == 42 {
-        return Err(DBError::MeaningOfLife)
+        return Err(DBError::MeaningOfLife);
     }
     Ok(num)
 }
 
-
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::io::{Error, ErrorKind};
     use std::path::Path;
-    use super::*;
 
     #[test]
     fn write_and_read_succeeds() {

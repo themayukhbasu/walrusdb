@@ -1,5 +1,5 @@
 use std::fmt;
-use std::fmt::{Formatter};
+use std::fmt::Formatter;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 
@@ -97,23 +97,22 @@ fn main() -> Result<(), DBError> {
     let n3 = store.allocate_block()?;
 
     store.write_block(n3, [3u8; BLOCK_SIZE])?;
-    store.write_block(n1, [1u8;BLOCK_SIZE])?;
+    store.write_block(n1, [1u8; BLOCK_SIZE])?;
     store.write_block(n2, [2u8; BLOCK_SIZE])?;
 
     drop(store);
 
     let mut store = BlockStore::open(path_str)?;
     let read_buf = store.read_block(n1)?;
-    assert_eq!(read_buf, [1u8;BLOCK_SIZE]);
+    assert_eq!(read_buf, [1u8; BLOCK_SIZE]);
     println!("{:?}", read_buf);
     Ok(())
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
     use super::*;
+    use std::path::Path;
 
     #[test]
     fn new_store_has_zero_blocks() {
@@ -135,7 +134,7 @@ mod tests {
         let _ = std::fs::remove_file(path); // clean slate
 
         let mut store = BlockStore::open(path_str).unwrap();
-        let _ =store.allocate_block();
+        let _ = store.allocate_block();
         assert_eq!(store.num_blocks().unwrap(), 1u64);
 
         let _ = std::fs::remove_file(path); // clean slate
@@ -171,8 +170,14 @@ mod tests {
         let _ = store.allocate_block();
         assert!(store.read_block(0).is_ok());
         assert!(store.read_block(123).is_err());
-        assert!(matches!(store.read_block(123), Err(DBError::BlockOutOfBounds(..))));
-        assert!(matches!(store.read_block(42), Err(DBError::InvalidPage(..))));
+        assert!(matches!(
+            store.read_block(123),
+            Err(DBError::BlockOutOfBounds(..))
+        ));
+        assert!(matches!(
+            store.read_block(42),
+            Err(DBError::InvalidPage(..))
+        ));
 
         let _ = std::fs::remove_file(path); // clean slate
     }
