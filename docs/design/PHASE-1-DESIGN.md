@@ -26,29 +26,33 @@ Lowest-level API for filesystem I/O.
 
 ### Page
 
-Page layout: header + pointer array + cells.
+Page layout: header + fixed pointer directory + cells.
 
-- **pointer array**:
-    - one fixed-size entry per live cell — no entries for free space
-    - kept sorted by key; lookup binary-searches it
-    - shifted on every insert/delete to stay sorted and gap-free
-    - on delete: entry removed outright; the freed byte range goes to the availability list
+- **pointer directory** (Phase 1: fixed capacity):
+    - reserved region immediately after the header; does not grow into cell free space
+    - capacity hard-capped (see Decisions) — a full directory means the page cannot take another record
+    - locator length in the header always describes the full reserved region
+    - live entry count is tracked separately; only the live prefix is valid
+    - live entries kept sorted by key; lookup binary-searches that prefix
+    - shifted on every insert/delete to stay sorted and gap-free within the directory
+    - on delete: entry removed outright; the freed cell byte range goes to the availability list
+    - unused directory slots are ignored (not free-list-managed)
 - **cells**:
     - not a stored structure — live record bytes packed from the end of the page backward
     - never move except during compaction
     - a cell is just a byte range, addressed via its pointer entry
 - conceptually, a page holds:
     - a decoded header
-    - a decoded pointer array
-    - the raw bytes for everything after the pointer array
+    - a decoded pointer directory (live prefix meaningful)
+    - the raw bytes for everything after the directory (cell area + free holes)
 - a pointer entry, page-absolute, no references:
     - cell location: an offset + a length (plays the role of a RID/TupleID)
     - key bounds within the cell: a key offset + a key length
-- the pointer array's own job is narrowly insert-at-index / remove-at-index bookkeeping over its backing
-  list — it does not decode or compare keys
+- the pointer directory's own job is narrowly insert-at-index / remove-at-index bookkeeping over its
+  backing list — it does not decode or compare keys
 - **TODO**
-    - split mechanics when a free cell found via the availability list is larger than the record being
-      inserted (where the leftover goes, whether the pointer array can grow by more than one entry per insert)
+    - leftover free-range bookkeeping when a chosen free cell is larger than the record being inserted
+      (Pager computes the leftover hole; free-list `update` applies it)
     - cell layout (byte-level record encoding within a cell)
 
 ### FreeList
@@ -59,19 +63,32 @@ fragmentation — accepted, not fixed, for now).
 - **free list**: per-page aggregate free-byte count. Cheap to scan across all pages; cached rather than
   derived from the availability list on every query.
 - **availability list**: per-page list of actual free cells and their sizes.
+- **what free-list manages**: cell-area holes only. Header and the fixed pointer directory are out of
+  scope — never registered as free space.
+- **fresh data page**: one initial free range covering everything after header + directory; aggregate
+  equals that length.
 - **allocation lookup**, two-step:
     1. free list for a candidate page with aggregate free bytes ≥ requested size.
     2. that page's availability list for one cell big enough (aggregate ≥ N doesn't guarantee a single free
        cell ≥ N — classic fragmentation). If no single cell fits, compact that page before falling back to a
        fresh page.
-- capabilities: best-fit lookup (size -> page + slot if found), a "fits after compaction" check, update, load
+- **requested size** for best-fit is the cell/record byte length only (directory slots are reserved, not
+  carved from free space).
+- **`update`**:
+    - insert/delete change a page's aggregate free-byte total
+    - reshaping free ranges alone (leftover after a partial carve, coalesce of adjacent holes) must not
+      change the aggregate — same free bytes, redistributed
+    - adjacent free holes are coalesced inside `update` so the availability list stays merged
+    - reject mutations for page 0 (free-list metadata page)
+    - caller (Pager) supplies the post-mutation leftover range(s); free list does not encode slotted
+      page geometry
+- capabilities: best-fit lookup (size -> page + free range if found), a "fits after compaction" check,
+  update, load
 - **open questions**
-    - best-fit when free space is spread across several slots that individually don't fit but sum to enough —
-      do we split slots? what does the return value mean then?
-- **TODO**
-    - keep the free list totals consistent with the availability list on every mutating op (split/coalesce
-      must not change a page's aggregate total; only insert/delete should)
     - whether the availability list needs to live on more than page 0 past toy scale
+- **TODO**
+    - keep the free list totals consistent with the availability list on every mutating op (see `update`
+      rules above)
 - **Best-fit lookup algorithm** (candidate-based):
     1. **Candidate selection (free list scan)**:
         - filter pages where `aggregate_free >= requested_size`
@@ -83,9 +100,11 @@ fragmentation — accepted, not fixed, for now).
         - pick the smallest single cell that still satisfies `cell_size >= requested_size`
         - first candidate with a satisfying cell wins -> return `Found`
     3. **Outcomes**:
-        - a candidate has a fitting cell -> `Found(page_num, slot)`
+        - a candidate has a fitting cell -> `Found(page_num, free_range)`
         - candidates exist but none has a single fitting cell (fragmentation) -> `NeedsCompaction(candidates)`
         - no page satisfies step 1 at all -> `NoSpace`
+    4. **Not free-list's job**: directory-full pages. Pager refuses another insert when live count is at
+       capacity even if cell free space remains; that is not `NeedsCompaction`.
 
 ### Pager
 
@@ -102,7 +121,11 @@ Manages pages.
     - compares raw bytes directly (byte-lexicographic `Ord`, free in Rust) — no record decoding, no strings
 - **next-empty-slot lookup** for a size:
     - best-fit -> if it only fits after compaction, compact then return the slot -> else allocate a fresh page
+    - after `Found`, enforce pointer-directory capacity (live count at cap => skip page / allocate fresh)
+    - on `NoSpace`, allocate a fresh page, register its initial post-directory free range via free-list
+      `update`, then place the record
     - helper scans: an empty-slot scan, a free-list scan
+- **owns file growth**: free list never calls allocate; Pager does
 
 ### Record
 
@@ -134,11 +157,19 @@ Manages records; doesn't know about pages.
   not reusing SQLite's file-format naming.
 - **The page's raw byte field** (everything after the pointer array) is referred to as "bytes", not "data".
 - **Pointer offsets are page-absolute**, not relative to the byte field or the cell's own start:
-    - the byte field's start shifts as the pointer array grows/shrinks, but cells don't move except during
-      compaction
+    - with a fixed directory, the cell-area start is stable; cells still don't move except during compaction
     - absolute offsets stay valid regardless
     - cost: compaction updates a cell's offset and key offset together — but since the whole cell moves as one
       block, it's the same delta applied to both
+- **Fixed pointer directory (Phase 1)**:
+    - growing the directory into the free gap made one insert touch two different free regions (directory
+      growth + best-fit cell hole) — too much variable geometry before insert even works
+    - reserve a fixed directory after the header; hard cap on records per page accepted for Phase 1
+    - capacity: 64 entries (512 bytes at 8 bytes/entry)
+    - header locator length always equals the full reserved directory; live count alone tracks valid entries
+    - free list never manages header or directory bytes
+    - best-fit requested size = cell length only
+    - directory full => Pager treats the page as unable to take another insert (not a compaction outcome)
 - **PageStore's allocate** eagerly writes real zero bytes rather than a sparse/logical extension — simpler,
   portable, avoids a page being "allocated" without disk space backing it. Sparse-file provisioning parked
   for a later phase.
