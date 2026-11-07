@@ -151,6 +151,12 @@
       "skillPath": "skills/in-progress/setup-ts-deep-modules/SKILL.md",
       "computedHash": "61508216ede38d8cfa712879197a76f75f4896615dbf7abc3f62571f8f5923cc"
     },
+    "slow-wayfinder": {
+      "source": "themayukhbasu/skills",
+      "sourceType": "github",
+      "skillPath": "slow-wayfinder/SKILL.md",
+      "computedHash": "d8b58a08acb0f9e865e19162f56072273199fd860dd88012c839afa132d8a02e"
+    },
     "tdd": {
       "source": "mattpocock/skills",
       "sourceType": "github",
